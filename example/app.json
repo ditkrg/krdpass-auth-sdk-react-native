@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "krdpass-auth-react-native-example",
+    "slug": "krdpass-auth-react-native-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "krdpass",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": [
+      "../app.plugin.js"
+    ],
+    "splash": {
+      "image": "./assets/adaptive-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "krd.pass.auth.demo",
+      "associatedDomains": [
+        "applinks:your-backend.example.com"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "krd.pass.auth.demo"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

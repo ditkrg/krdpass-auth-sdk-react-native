@@ -1,0 +1,50 @@
+pluginManagement {
+  def reactNativeGradlePlugin = new File(
+    providers.exec {
+      workingDir(rootDir)
+      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+    }.standardOutput.asText.get().trim()
+  ).getParentFile().absolutePath
+  includeBuild(reactNativeGradlePlugin)
+  
+  def expoPluginsPath = new File(
+    providers.exec {
+      workingDir(rootDir)
+      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+    }.standardOutput.asText.get().trim(),
+    "../android/expo-gradle-plugin"
+  ).absolutePath
+  includeBuild(expoPluginsPath)
+}
+
+plugins {
+  id("com.facebook.react.settings")
+  id("expo-autolinking-settings")
+}
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    create("libs") {
+      from(files("../../../../packages/krdpass_auth_android/gradle/libs.versions.toml"))
+    }
+  }
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+    ex.autolinkLibrariesFromCommand()
+  } else {
+    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+  }
+}
+expoAutolinking.useExpoModules()
+
+rootProject.name = 'krdpass-auth-react-native-example'
+
+expoAutolinking.useExpoVersionCatalog()
+
+include ':app'
+includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+include ':packages:krdpass_auth_android:library'
+project(':packages:krdpass_auth_android:library').projectDir = new File(rootDir, '../../../../packages/krdpass_auth_android/library')
