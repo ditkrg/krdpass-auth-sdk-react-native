@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `refreshTokens()` - Refresh access tokens
   - `revokeToken()` - Revoke access or refresh tokens
   - `verifyToken()` - Verify ID token signature using JWKS
-  - `decodeToken()` - Decode JWT without verification
+  - `decodeTokenUnverified()` - Decode JWT without verification
 - **User Info**
   - `getUserInfo()` - Fetch user claims from userinfo endpoint
 - **TypeScript Support**

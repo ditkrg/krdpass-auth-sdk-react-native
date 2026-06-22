@@ -18,13 +18,13 @@
   ],
   "author": "KRDPass Team <integration@pass.krd>",
   "license": "MIT",
-  "homepage": "https://krdpass.dev",
+  "homepage": "https://github.com/ditkrg/krdpass-auth-sdk-react-native",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ditkrg/krdpass-auth-sdk.git"
+    "url": "https://github.com/ditkrg/krdpass-auth-sdk-react-native"
   },
   "bugs": {
-    "url": "https://github.com/ditkrg/krdpass-auth-sdk/issues"
+    "url": "https://github.com/ditkrg/krdpass-auth-sdk-react-native/issues"
   },
   "dependencies": {
     "@expo/config-plugins": "~55.0.10",

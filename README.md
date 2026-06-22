@@ -17,26 +17,55 @@ One package supports both:
 - Expo managed/dev-client apps
 - Bare React Native apps (non-Expo app) after Expo Modules runtime setup
 
-## Install from This Repository (v1)
+## Install (v1)
 
-1. Clone the repo:
-
-```bash
-git clone https://github.com/ditkrg/krdpass-auth-sdk.git
-```
-
-2. Install from local path:
+Add the package as a git dependency (no public registry):
 
 ```bash
-npm install ../krdpass-auth-sdk/packages/krdpass_auth_react_native
+npm install "git+ssh://git@github.com/ditkrg/krdpass-auth-sdk-react-native.git#v1.0.0"
 ```
 
 This package runs a `prepare` build on install. If npm scripts are disabled, run once:
 
 ```bash
-cd ../krdpass-auth-sdk/packages/krdpass_auth_react_native
+cd node_modules/krdpass-auth-react-native
 npm run build
 ```
+
+## Quickstart
+
+```ts
+import { initialize, signIn, authenticate, getUserInfo } from 'krdpass-auth-react-native';
+
+// Call once at app startup. Stores clientId/redirectUri/environment as
+// defaults for every subsequent call (you can still override per call).
+initialize({
+  clientId: 'your-client-id',
+  redirectUri: 'https://auth.your-app.example.com/_krdpass/oauth/callback',
+  environment: 'production', // or 'development'
+});
+
+// Client-only direct flow: the SDK handles PKCE, launches KRDPASS,
+// and exchanges the authorization code for tokens. No backend required.
+const tokens = await signIn({
+  clientId: 'your-client-id',
+  redirectUri: 'https://auth.your-app.example.com/_krdpass/oauth/callback',
+  scopes: ['openid', 'profile'],
+});
+
+// Fetch user claims with the access token.
+const user = await getUserInfo({ accessToken: tokens.accessToken });
+```
+
+For server-mediated production flows, your backend performs PAR + token
+exchange and returns a `requestUri`; pass it to `authenticate()`:
+
+```ts
+const result = await authenticate({ requestUri }); // { code, state } on success
+```
+
+See [Sign in with KRDPASS](https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-sign-in-with-krdpass.html)
+for the backend integration reference.
 
 ### Expo setup
 
@@ -114,8 +143,8 @@ Bare RN native requirements:
 
 ## Example App
 
-- Path: `packages/krdpass_auth_react_native/example`
-- Setup guide: `packages/krdpass_auth_react_native/example/README.md`
+- A complete demo Expo app lives in the `example/` directory of this repository.
+- See `example/README.md` for setup instructions.
 
 ## Security Notes
 
@@ -124,6 +153,4 @@ Bare RN native requirements:
 
 ## Related Docs
 
-- Root guide: `../../README.md`
-- Integration architecture: `../../docs/INTEGRATION.md`
-- Server reference: `../../examples/server/README.md`
+- Sign in with KRDPASS (backend integration reference): https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-sign-in-with-krdpass.html

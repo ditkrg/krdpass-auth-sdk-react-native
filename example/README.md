@@ -14,7 +14,7 @@ Reference Expo app for **Sign in with KRDPASS**. The SDK package supports both E
 - Node.js 18+
 - Expo CLI tooling
 - iOS/Android native toolchains for `expo run:*`
-- Running backend (recommended: `examples/server`)
+- A running backend that implements the server-mediated PAR + token exchange (see [Sign in with KRDPASS](https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-sign-in-with-krdpass.html))
 
 ## Required Onboarding Inputs
 
@@ -84,6 +84,5 @@ npx expo start --dev-client --tunnel
 
 ## Related Docs
 
-- SDK README: `../README.md`
-- Integration guide: `../../../docs/INTEGRATION.md`
-- Server reference: `../../../examples/server/README.md`
+- SDK README: see the package `README.md` at the repository root.
+- Sign in with KRDPASS (backend integration reference): https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-sign-in-with-krdpass.html
