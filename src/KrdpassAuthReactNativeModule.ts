@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { NativeModules } from "react-native";
 
 type KrdpassNativeModule = {
   signIn: (config: unknown) => Promise<unknown>;
@@ -8,7 +8,10 @@ type KrdpassNativeModule = {
   refreshTokens: (config: unknown) => Promise<unknown>;
   revokeToken: (config: unknown) => Promise<unknown>;
   verifyToken: (config: unknown) => Promise<unknown>;
-  generatePkcePair: () => Promise<{ codeVerifier: string; codeChallenge: string }>;
+  generatePkcePair: () => Promise<{
+    codeVerifier: string;
+    codeChallenge: string;
+  }>;
   handleURL?: (url: string) => boolean;
 };
 
@@ -20,20 +23,20 @@ function loadNativeModule(): KrdpassNativeModule {
 
   try {
     // Works in Expo apps and bare React Native apps configured with Expo Modules runtime.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const expoModulesCore = require('expo-modules-core') as {
+
+    const expoModulesCore = require("expo-modules-core") as {
       requireNativeModule: <T>(moduleName: string) => T;
     };
     return expoModulesCore.requireNativeModule<KrdpassNativeModule>(
-      'KrdpassAuthReactNative',
+      "KrdpassAuthReactNative",
     );
   } catch {
     throw new Error(
       [
-        'KrdpassAuthReactNative native module is not available.',
-        'Expo apps: run `npx expo prebuild` after installing this package.',
-        'Bare React Native apps: run `npx install-expo-modules@latest` once, then rebuild the native app.',
-      ].join(' '),
+        "KrdpassAuthReactNative native module is not available.",
+        "Expo apps: run `npx expo prebuild` after installing this package.",
+        "Bare React Native apps: run `npx install-expo-modules@latest` once, then rebuild the native app.",
+      ].join(" "),
     );
   }
 }

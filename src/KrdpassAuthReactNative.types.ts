@@ -1,13 +1,29 @@
 /**
  * Configuration for KrdpassAuth SDK
  */
-export type KrdpassEnvironment = 'production' | 'development';
+export type KrdpassEnvironment = "production" | "development";
 
 export interface KrdpassConfig {
   clientId: string;
   redirectUri: string;
   scopes?: string | string[];
   environment?: KrdpassEnvironment;
+}
+
+/**
+ * Configuration for the client-only {@link signIn} flow.
+ *
+ * `clientId` and `redirectUri` are optional: if omitted they fall back to the
+ * values passed to {@link initialize}, so `signIn({ scopes })` works once the
+ * SDK is initialized — matching the iOS/Android/Flutter SDKs.
+ */
+export interface SignInConfig {
+  clientId?: string;
+  redirectUri?: string;
+  scopes?: string | string[];
+  environment?: KrdpassEnvironment;
+  /** Optional authentication timeout in seconds. */
+  timeout?: number;
 }
 
 /**
@@ -62,16 +78,16 @@ export interface AuthResultSuccess {
  * {@link AuthResultErrorGeneric} (whose `error` is a plain string).
  */
 export type AuthErrorCode =
-  | 'cancelled'
-  | 'timeout'
-  | 'busy'
-  | 'state_mismatch'
-  | 'invalid_redirect'
-  | 'invalid_request'
-  | 'launch_failed'
-  | 'provider_not_installed'
-  | 'no_code'
-  | 'platform_error';
+  | "cancelled"
+  | "timeout"
+  | "busy"
+  | "state_mismatch"
+  | "invalid_redirect"
+  | "invalid_request"
+  | "launch_failed"
+  | "provider_not_installed"
+  | "no_code"
+  | "platform_error";
 
 /**
  * Base error result from authenticate call.
@@ -82,31 +98,31 @@ export interface AuthResultErrorBase {
 }
 
 export interface AuthResultCancelled extends AuthResultErrorBase {
-  error: 'cancelled';
+  error: "cancelled";
 }
 
 export interface AuthResultTimeout extends AuthResultErrorBase {
-  error: 'timeout';
+  error: "timeout";
 }
 
 export interface AuthResultBusy extends AuthResultErrorBase {
-  error: 'busy';
+  error: "busy";
 }
 
 export interface AuthResultStateMismatch extends AuthResultErrorBase {
-  error: 'state_mismatch';
+  error: "state_mismatch";
 }
 
 export interface AuthResultInvalidRedirect extends AuthResultErrorBase {
-  error: 'invalid_redirect';
+  error: "invalid_redirect";
 }
 
 export interface AuthResultLaunchFailed extends AuthResultErrorBase {
-  error: 'launch_failed';
+  error: "launch_failed";
 }
 
 export interface AuthResultPlatformError extends AuthResultErrorBase {
-  error: 'platform_error';
+  error: "platform_error";
 }
 
 export interface AuthResultErrorGeneric extends AuthResultErrorBase {
@@ -134,23 +150,23 @@ export type AuthResultError =
 export type AuthResult = AuthResultSuccess | AuthResultError;
 
 export function isAuthResultSuccess(r: AuthResult): r is AuthResultSuccess {
-  return 'code' in r && !('error' in r);
+  return "code" in r && !("error" in r);
 }
 
 export function isAuthResultError(r: AuthResult): r is AuthResultError {
-  return 'error' in r;
+  return "error" in r;
 }
 
 export function isAuthResultCancelled(r: AuthResult): r is AuthResultCancelled {
-  return isAuthResultError(r) && r.error === 'cancelled';
+  return isAuthResultError(r) && r.error === "cancelled";
 }
 
 export function isAuthResultTimeout(r: AuthResult): r is AuthResultTimeout {
-  return isAuthResultError(r) && r.error === 'timeout';
+  return isAuthResultError(r) && r.error === "timeout";
 }
 
 export function isAuthResultBusy(r: AuthResult): r is AuthResultBusy {
-  return isAuthResultError(r) && r.error === 'busy';
+  return isAuthResultError(r) && r.error === "busy";
 }
 
 /**
@@ -208,5 +224,5 @@ export interface RevokeTokenConfig {
   clientId?: string;
   environment?: KrdpassEnvironment;
   token: string;
-  tokenTypeHint?: 'access_token' | 'refresh_token';
+  tokenTypeHint?: "access_token" | "refresh_token";
 }

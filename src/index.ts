@@ -1,5 +1,6 @@
-import { Linking, Platform } from 'react-native';
-import 'react-native-get-random-values';
+import { Linking, Platform } from "react-native";
+
+import "react-native-get-random-values";
 import {
   AuthErrorCode,
   AuthResult,
@@ -23,6 +24,7 @@ import {
   PkcePair,
   RefreshTokensConfig,
   RevokeTokenConfig,
+  SignInConfig,
   TokenClaims,
   VerifyTokenConfig,
   isAuthResultBusy,
@@ -30,8 +32,8 @@ import {
   isAuthResultError,
   isAuthResultSuccess,
   isAuthResultTimeout,
-} from './KrdpassAuthReactNative.types';
-import KrdpassAuthReactNativeModule from './KrdpassAuthReactNativeModule';
+} from "./KrdpassAuthReactNative.types";
+import KrdpassAuthReactNativeModule from "./KrdpassAuthReactNativeModule";
 
 export {
   AuthErrorCode,
@@ -43,7 +45,10 @@ export {
   AuthResultErrorGeneric,
   AuthResultInvalidRedirect,
   AuthResultLaunchFailed,
-  AuthResultPlatformError, AuthResultStateMismatch, AuthResultSuccess, AuthResultTimeout,
+  AuthResultPlatformError,
+  AuthResultStateMismatch,
+  AuthResultSuccess,
+  AuthResultTimeout,
   AuthenticateConfig,
   GetUserInfoConfig,
   InitializeConfig,
@@ -53,13 +58,14 @@ export {
   PkcePair,
   RefreshTokensConfig,
   RevokeTokenConfig,
+  SignInConfig,
   TokenClaims,
   VerifyTokenConfig,
   isAuthResultBusy,
   isAuthResultCancelled,
   isAuthResultError,
   isAuthResultSuccess,
-  isAuthResultTimeout
+  isAuthResultTimeout,
 };
 
 // ---------------------------------------------------------------------------
@@ -80,7 +86,7 @@ let _storedConfig: InitializeConfig | null = null;
  */
 export function initialize(config: InitializeConfig): void {
   _storedConfig = {
-    clientId: assertNonEmpty(config.clientId, 'clientId'),
+    clientId: assertNonEmpty(config.clientId, "clientId"),
     redirectUri: assertHttpsRedirectUri(config.redirectUri),
     environment: config.environment,
   };
@@ -99,15 +105,19 @@ function resolveConfig(override?: {
   const redirectUri = override?.redirectUri ?? _storedConfig?.redirectUri;
   const environment = override?.environment ?? _storedConfig?.environment;
   return {
-    clientId: assertNonEmpty(clientId, 'clientId (call initialize() first or pass directly)'),
-    redirectUri: assertHttpsRedirectUri(
-      assertNonEmpty(redirectUri, 'redirectUri (call initialize() first or pass directly)'),
+    clientId: assertNonEmpty(
+      clientId,
+      "clientId (call initialize() first or pass directly)",
     ),
-    environment: environment ?? 'production',
+    redirectUri: assertHttpsRedirectUri(
+      assertNonEmpty(
+        redirectUri,
+        "redirectUri (call initialize() first or pass directly)",
+      ),
+    ),
+    environment: environment ?? "production",
   };
 }
-
-
 
 const HTTPS_REDIRECT_URI_REGEX =
   /^https:\/\/[^/\s?#]+(?::\d{1,5})?(?:[/?#].*)?$/i;
@@ -121,9 +131,9 @@ const assertNonEmpty = (value: string | undefined, field: string): string => {
 };
 
 const assertHttpsRedirectUri = (redirectUri: string): string => {
-  const normalized = assertNonEmpty(redirectUri, 'redirectUri');
+  const normalized = assertNonEmpty(redirectUri, "redirectUri");
   if (!HTTPS_REDIRECT_URI_REGEX.test(normalized)) {
-    throw new Error('redirectUri must be a valid HTTPS URL');
+    throw new Error("redirectUri must be a valid HTTPS URL");
   }
   return normalized;
 };
@@ -140,18 +150,21 @@ const assertHttpsRedirectUri = (redirectUri: string): string => {
  * @returns Promise resolving to tokens (accessToken, idToken, refreshToken, etc.)
  * @throws Error if authentication fails or is cancelled
  */
-export async function signIn(config: KrdpassConfig): Promise<KrdpassTokenResult> {
+export async function signIn(
+  config: SignInConfig = {},
+): Promise<KrdpassTokenResult> {
   let sub: ReturnType<typeof Linking.addEventListener> | undefined;
-  if (Platform.OS === 'ios') {
-    sub = Linking.addEventListener('url', ({ url }) => {
+  if (Platform.OS === "ios") {
+    sub = Linking.addEventListener("url", ({ url }) => {
       KrdpassAuthReactNativeModule.handleURL?.(url);
     });
   }
 
   try {
     const resolved = resolveConfig(config);
-    const scopes =
-      Array.isArray(config.scopes) ? config.scopes.join(' ') : config.scopes;
+    const scopes = Array.isArray(config.scopes)
+      ? config.scopes.join(" ")
+      : config.scopes;
     return (await KrdpassAuthReactNativeModule.signIn({
       ...config,
       clientId: resolved.clientId,
@@ -170,9 +183,11 @@ export async function signIn(config: KrdpassConfig): Promise<KrdpassTokenResult>
  * @param config - Configuration including accessToken
  * @returns Promise resolving to user info claims
  */
-export async function getUserInfo(config: GetUserInfoConfig): Promise<TokenClaims> {
+export async function getUserInfo(
+  config: GetUserInfoConfig,
+): Promise<TokenClaims> {
   const resolved = resolveConfig(config);
-  const accessToken = assertNonEmpty(config.accessToken, 'accessToken');
+  const accessToken = assertNonEmpty(config.accessToken, "accessToken");
   return (await KrdpassAuthReactNativeModule.getUserInfo({
     ...config,
     clientId: resolved.clientId,
@@ -187,9 +202,11 @@ export async function getUserInfo(config: GetUserInfoConfig): Promise<TokenClaim
  * @param config - Configuration including refreshToken
  * @returns Promise resolving to new tokens
  */
-export async function refreshTokens(config: RefreshTokensConfig): Promise<KrdpassTokenResult> {
+export async function refreshTokens(
+  config: RefreshTokensConfig,
+): Promise<KrdpassTokenResult> {
   const resolved = resolveConfig(config);
-  const refreshToken = assertNonEmpty(config.refreshToken, 'refreshToken');
+  const refreshToken = assertNonEmpty(config.refreshToken, "refreshToken");
   return (await KrdpassAuthReactNativeModule.refreshTokens({
     ...config,
     clientId: resolved.clientId,
@@ -205,7 +222,7 @@ export async function refreshTokens(config: RefreshTokensConfig): Promise<Krdpas
  */
 export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
   const resolved = resolveConfig(config);
-  const token = assertNonEmpty(config.token, 'token');
+  const token = assertNonEmpty(config.token, "token");
   await KrdpassAuthReactNativeModule.revokeToken({
     ...config,
     clientId: resolved.clientId,
@@ -227,9 +244,11 @@ export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
  * @returns Promise resolving to verified token claims
  * @throws Error if token signature is invalid or claims fail validation
  */
-export async function verifyToken(config: VerifyTokenConfig): Promise<TokenClaims> {
+export async function verifyToken(
+  config: VerifyTokenConfig,
+): Promise<TokenClaims> {
   const resolved = resolveConfig(config);
-  const idToken = assertNonEmpty(config.idToken, 'idToken');
+  const idToken = assertNonEmpty(config.idToken, "idToken");
   return (await KrdpassAuthReactNativeModule.verifyToken({
     ...config,
     clientId: resolved.clientId,
@@ -250,28 +269,30 @@ export async function generatePkcePair(): Promise<PkcePair> {
  * Launch KrdPass authentication with a pre-obtained requestUri.
  * Use this for server-mediated authentication flows where your backend
  * handles PAR and token exchange.
- * 
+ *
  * @param config - Authentication configuration including requestUri from backend
  * @returns AuthResult with code and state for backend token exchange
  */
-export async function authenticate(config: AuthenticateConfig): Promise<AuthResult> {
+export async function authenticate(
+  config: AuthenticateConfig,
+): Promise<AuthResult> {
   let sub: ReturnType<typeof Linking.addEventListener> | undefined;
-  if (Platform.OS === 'ios') {
-    sub = Linking.addEventListener('url', ({ url }) => {
+  if (Platform.OS === "ios") {
+    sub = Linking.addEventListener("url", ({ url }) => {
       KrdpassAuthReactNativeModule.handleURL?.(url);
     });
   }
 
   try {
     const resolved = resolveConfig(config);
-    const requestUri = assertNonEmpty(config.requestUri, 'requestUri');
+    const requestUri = assertNonEmpty(config.requestUri, "requestUri");
     const timeout =
       config.timeout === undefined ? undefined : Number(config.timeout);
     if (timeout !== undefined) {
       if (!Number.isFinite(timeout) || timeout <= 0) {
         return {
-          error: 'platform_error',
-          errorDescription: 'timeout must be a positive number of seconds',
+          error: "invalid_request",
+          errorDescription: "timeout must be a positive number of seconds",
         };
       }
     }
@@ -282,11 +303,11 @@ export async function authenticate(config: AuthenticateConfig): Promise<AuthResu
       redirectUri: resolved.redirectUri,
       ...(timeout !== undefined ? { timeout } : {}),
       environment: resolved.environment,
-    })) as
-      | AuthResult
-      | (AuthResultError & { error_description?: string });
+    })) as AuthResult | (AuthResultError & { error_description?: string });
     if (isAuthResultError(result)) {
-      const errorDescription = result.errorDescription ?? (result as { error_description?: string }).error_description;
+      const errorDescription =
+        result.errorDescription ??
+        (result as { error_description?: string }).error_description;
       return { error: result.error, errorDescription };
     }
     return result;
@@ -311,7 +332,6 @@ export async function cancelPendingAuthentication(options?: {
   });
 }
 
-
 /**
  * Build the KRDPass authorization URL for server-mediated flow.
  * Requires clientId, redirectUri, and environment from config.
@@ -324,16 +344,17 @@ export function buildAuthorizationUrl(options: {
   environment?: KrdpassEnvironment;
 }): string {
   const resolved = resolveConfig(options);
-  const requestUri = assertNonEmpty(options.requestUri, 'requestUri');
-  const baseUrl = resolved.environment === 'production'
-    ? 'https://app.pass.krd/connect/authorize'
-    : 'https://app.krdpass.dev.krd/connect/authorize';
+  const requestUri = assertNonEmpty(options.requestUri, "requestUri");
+  const baseUrl =
+    resolved.environment === "production"
+      ? "https://app.pass.krd/connect/authorize"
+      : "https://app.krdpass.dev.krd/connect/authorize";
   const params = new URLSearchParams({
     client_id: resolved.clientId,
     request_uri: requestUri,
     redirect_uri: resolved.redirectUri,
   });
-  if (options.state) params.set('state', options.state);
+  if (options.state) params.set("state", options.state);
   return `${baseUrl}?${params.toString()}`;
 }
 
@@ -352,27 +373,27 @@ export function generateState(): string {
   const cryptoObj = (globalThis as { crypto?: Crypto }).crypto;
   if (!cryptoObj?.getRandomValues) {
     throw new Error(
-      'Secure random generator unavailable. Install and initialize react-native-get-random-values.',
+      "Secure random generator unavailable. Install and initialize react-native-get-random-values.",
     );
   }
   cryptoObj.getRandomValues(randomBytes);
 
   // Convert to base64 using btoa helper
-  let binary = '';
+  let binary = "";
   randomBytes.forEach((byte) => {
     binary += String.fromCharCode(byte);
   });
 
   // Base64url encode (no padding)
   const base64 = btoa(binary);
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 // btoa polyfill for React Native
 const btoa = (input: string): string => {
   const btoaChars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let output = '';
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let output = "";
   for (let i = 0; i < input.length; i += 3) {
     const a = input.charCodeAt(i);
     const b = input.charCodeAt(i + 1);
@@ -384,25 +405,30 @@ const btoa = (input: string): string => {
     output +=
       btoaChars[index1] +
       btoaChars[index2] +
-      (isNaN(b) ? '=' : btoaChars[index3]) +
-      (isNaN(c) ? '=' : btoaChars[index4]);
+      (isNaN(b) ? "=" : btoaChars[index3]) +
+      (isNaN(c) ? "=" : btoaChars[index4]);
   }
   return output;
 };
 
 // Polyfill for atob
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+const chars =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 const atob = (input: string) => {
-  let str = input.replace(/=+$/, '');
-  let output = '';
+  const str = input.replace(/=+$/, "");
+  let output = "";
 
-  if (str.length % 4 == 1) {
-    throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
+  if (str.length % 4 === 1) {
+    throw new Error(
+      "'atob' failed: The string to be decoded is not correctly encoded.",
+    );
   }
-  for (let bc = 0, bs = 0, buffer, i = 0;
+  for (
+    let bc = 0, bs = 0, buffer, i = 0;
     (buffer = str.charAt(i++));
-    ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
-      bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
   ) {
     buffer = chars.indexOf(buffer);
   }
@@ -422,23 +448,31 @@ const atob = (input: string) => {
  * @throws Error if the token is not a parseable JWT
  */
 export function decodeTokenUnverified(token: string): TokenClaims {
-  const parts = token.split('.');
+  const parts = token.split(".");
   if (parts.length !== 3) {
-    throw new Error('Not a valid JWT: expected three parts');
+    throw new Error("Not a valid JWT: expected three parts");
   }
   try {
-    const decoded = atob(base64UrlToBase64(parts[1]));
-    return JSON.parse(decoded) as TokenClaims;
+    // atob yields a binary (Latin1) string; re-decode it as UTF-8 so non-ASCII claims
+    // (e.g. Kurdish/Arabic display names) are preserved instead of becoming mojibake.
+    const binary = atob(base64UrlToBase64(parts[1]));
+    const json = decodeURIComponent(
+      binary
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(json) as TokenClaims;
   } catch (e) {
     throw new Error(`Not a valid JWT payload: ${String(e)}`);
   }
 }
 
 const base64UrlToBase64 = (input: string): string => {
-  let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  let base64 = input.replace(/-/g, "+").replace(/_/g, "/");
   const padding = base64.length % 4;
   if (padding > 0) {
-    base64 = base64.padEnd(base64.length + (4 - padding), '=');
+    base64 = base64.padEnd(base64.length + (4 - padding), "=");
   }
   return base64;
 };
