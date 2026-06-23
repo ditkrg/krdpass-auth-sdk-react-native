@@ -162,6 +162,12 @@ export async function signIn(
 
   try {
     const resolved = resolveConfig(config);
+    if (
+      config.timeout !== undefined &&
+      (!Number.isFinite(config.timeout) || config.timeout <= 0)
+    ) {
+      throw new Error("timeout must be a positive number of seconds");
+    }
     const scopes = Array.isArray(config.scopes)
       ? config.scopes.join(" ")
       : config.scopes;

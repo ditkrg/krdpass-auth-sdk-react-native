@@ -119,7 +119,9 @@ class KrdpassAuthReactNativeModule : Module() {
              // S1: verify KRDPass is installed with the expected signing cert before launching.
              val providerError = module.checkProviderInstalled(activity, environment)
              if (providerError != null) {
-                module.resolveAuthError(promise, "provider_not_installed", providerError)
+                // signIn returns tokens or throws, so reject (do NOT resolve an error map — the
+                // JS wrapper would cast it to a token result). authenticate() resolves instead.
+                promise.reject("PROVIDER_NOT_INSTALLED", providerError, null)
                 module.clearAuthState()
                 return@withContext
              }

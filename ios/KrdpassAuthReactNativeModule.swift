@@ -18,7 +18,9 @@ public class KrdpassAuthReactNativeModule: Module {
       }
       
       let scopes = (config["scopes"] as? String)?.components(separatedBy: " ").filter { !$0.isEmpty } ?? ["openid", "profile"]
-      
+      // Honor an optional timeout (seconds) so iOS matches Android's signIn timeout behavior.
+      let timeout = (config["timeout"] as? NSNumber)?.doubleValue ?? 300
+
       let environment: KrdpassEnvironment
       do {
         environment = try parseEnvironment(config["environment"])
@@ -36,7 +38,7 @@ public class KrdpassAuthReactNativeModule: Module {
         let krdpassConfig = KrdpassConfig(clientId: clientId, redirectUri: redirectUri, environment: environment)
         self.activeAuth = KrdpassAuth(config: krdpassConfig)
         do {
-            let result = try await self.activeAuth?.signIn(scopes: scopes)
+            let result = try await self.activeAuth?.signIn(scopes: scopes, timeout: timeout)
             if let tokens = result {
                  promise.resolve([
                     "accessToken": tokens.accessToken,
