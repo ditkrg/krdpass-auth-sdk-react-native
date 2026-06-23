@@ -1,7 +1,0 @@
-# Optional custom signing config for Expo Android builds.
-# If this file is missing, debug builds use the default Android debug keystore.
-
-storeFile=debug.keystore
-storePassword=android
-keyAlias=androiddebugkey
-keyPassword=android
