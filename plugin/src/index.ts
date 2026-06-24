@@ -26,7 +26,7 @@ const withAndroidConfig: ConfigPlugin = (config) => {
 
     // Check if already exists to avoid duplicates
     const queries = config.modResults.manifest.queries;
-    const packageIds = ["krd.pass", "krd.pass.staging", "krd.pass.dev"];
+    const packageIds = ["krd.pass", "krd.pass.dev"];
     const existingPackages = new Set(
       queries.flatMap((q: any) =>
         (q.package || []).map((p: any) => p.$?.["android:name"]),

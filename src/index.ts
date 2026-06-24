@@ -21,6 +21,7 @@ import {
   KrdpassAuthError,
   KrdpassEnvironment,
   KrdpassTokenResult,
+  KrdpassUserInfo,
   PkcePair,
   RefreshTokensConfig,
   RevokeTokenConfig,
@@ -55,6 +56,7 @@ export {
   KrdpassAuthError,
   KrdpassEnvironment,
   KrdpassTokenResult,
+  KrdpassUserInfo,
   PkcePair,
   RefreshTokensConfig,
   RevokeTokenConfig,
@@ -211,19 +213,56 @@ export async function signIn(
  * Get user information from CAS using an access token.
  *
  * @param config - Configuration including accessToken
- * @returns Promise resolving to user info claims
+ * @returns Promise resolving to the typed user info (raw claims on `.raw`)
  */
 export async function getUserInfo(
   config: GetUserInfoConfig,
-): Promise<TokenClaims> {
+): Promise<KrdpassUserInfo> {
   const resolved = resolveConfig(config);
   const accessToken = assertNonEmpty(config.accessToken, "accessToken");
-  return (await KrdpassAuthReactNativeModule.getUserInfo({
+  const raw = (await KrdpassAuthReactNativeModule.getUserInfo({
     ...config,
     clientId: resolved.clientId,
     accessToken,
     environment: resolved.environment,
-  })) as TokenClaims;
+  })) as Record<string, any>;
+  return mapUserInfo(raw);
+}
+
+/**
+ * Map the raw UserInfo claims (snake_case) into the typed {@link KrdpassUserInfo}
+ * shape used by the Android/Flutter SDKs, preserving the full claim set on `raw`.
+ */
+function mapUserInfo(raw: Record<string, any>): KrdpassUserInfo {
+  const sub = raw.sub;
+  if (typeof sub !== "string" || sub.length === 0) {
+    throw new Error("Invalid user info response: missing or empty sub field");
+  }
+  const nameParts = [
+    raw.citizen_first,
+    raw.citizen_second,
+    raw.citizen_third,
+    raw.citizen_surname,
+  ].filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  return {
+    sub,
+    name: raw.name,
+    givenName: raw.given_name,
+    familyName: raw.family_name,
+    picture: raw.picture ?? raw.citizen_profile_picture,
+    email: raw.email,
+    citizenFirst: raw.citizen_first,
+    citizenSecond: raw.citizen_second,
+    citizenThird: raw.citizen_third,
+    citizenSurname: raw.citizen_surname,
+    citizenProfilePicture: raw.citizen_profile_picture,
+    birthdate: raw.birthdate,
+    sexAtBirth: raw.sex_at_birth,
+    upn: raw.upn,
+    did: raw.did,
+    citizenFullName: nameParts.length ? nameParts.join(" ") : undefined,
+    raw,
+  };
 }
 
 /**

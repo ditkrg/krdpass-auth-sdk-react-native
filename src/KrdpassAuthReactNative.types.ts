@@ -48,6 +48,36 @@ export interface KrdpassTokenResult {
 export type TokenClaims = Record<string, any>;
 
 /**
+ * User information claims returned by {@link getUserInfo}.
+ *
+ * Typed access to the standard OpenID Connect claims and the KRDPass-specific
+ * citizen claims, matching the Android/Flutter SDKs. Any unmapped/custom claims
+ * remain available on `raw`.
+ */
+export interface KrdpassUserInfo {
+  /** Subject — identifier for the End-User. */
+  sub: string;
+  name?: string;
+  givenName?: string;
+  familyName?: string;
+  picture?: string;
+  email?: string;
+  citizenFirst?: string;
+  citizenSecond?: string;
+  citizenThird?: string;
+  citizenSurname?: string;
+  citizenProfilePicture?: string;
+  birthdate?: string;
+  sexAtBirth?: string;
+  upn?: string;
+  did?: string;
+  /** Full citizen name assembled from the known parts, if any. */
+  citizenFullName?: string;
+  /** Raw claims map from the UserInfo endpoint (for custom/non-standard fields). */
+  raw: Record<string, unknown>;
+}
+
+/**
  * PKCE code verifier and challenge pair
  */
 export interface PkcePair {
@@ -72,6 +102,7 @@ export interface AuthResultSuccess {
  */
 export type AuthErrorCode =
   | "cancelled"
+  | "access_denied"
   | "timeout"
   | "busy"
   | "state_mismatch"
@@ -80,6 +111,7 @@ export type AuthErrorCode =
   | "launch_failed"
   | "provider_not_installed"
   | "no_code"
+  | "network_error"
   | "platform_error";
 
 /**
@@ -151,7 +183,12 @@ export function isAuthResultError(r: AuthResult): r is AuthResultError {
 }
 
 export function isAuthResultCancelled(r: AuthResult): r is AuthResultCancelled {
-  return isAuthResultError(r) && r.error === "cancelled";
+  // access_denied (user declined consent) is treated as a cancellation,
+  // matching the Android/Flutter SDKs.
+  return (
+    isAuthResultError(r) &&
+    (r.error === "cancelled" || r.error === "access_denied")
+  );
 }
 
 export function isAuthResultTimeout(r: AuthResult): r is AuthResultTimeout {

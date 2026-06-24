@@ -303,3 +303,41 @@ describe("required-field guards reject blank values", () => {
     );
   });
 });
+
+describe("getUserInfo maps raw claims to typed KrdpassUserInfo", () => {
+  beforeEach(() => {
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+  });
+
+  it("maps snake_case -> camelCase, builds citizenFullName, keeps raw", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({
+      sub: "user-1",
+      given_name: "Arin",
+      family_name: "Faraj",
+      citizen_first: "Arin",
+      citizen_surname: "Faraj",
+      sex_at_birth: "male",
+      custom_claim: "x",
+    });
+    const info = await getUserInfo({ accessToken: "at" });
+    expect(info.sub).toBe("user-1");
+    expect(info.givenName).toBe("Arin");
+    expect(info.familyName).toBe("Faraj");
+    expect(info.sexAtBirth).toBe("male");
+    expect(info.citizenFullName).toBe("Arin Faraj");
+    expect(info.raw.custom_claim).toBe("x");
+  });
+
+  it("throws when the response has no sub", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({ name: "no sub" });
+    await expect(getUserInfo({ accessToken: "at" })).rejects.toThrow(/sub/i);
+  });
+});
+
+describe("isAuthResultCancelled treats access_denied as cancel (parity)", () => {
+  it("returns true for access_denied", () => {
+    expect(isAuthResultCancelled({ error: "access_denied" })).toBe(true);
+  });
+});

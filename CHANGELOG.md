@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-01-28
 
+### Changed (cross-SDK uniformity)
+
+- `getUserInfo()` now returns a typed `KrdpassUserInfo` (mapped camelCase claims +
+  `citizenFullName` + `raw`), matching the Android/Flutter SDKs.
+- Error-code set aligned across platforms: added `network_error` and `access_denied`
+  to `AuthErrorCode`; `isAuthResultCancelled()` now also treats `access_denied` as a
+  cancellation.
+- Removed `krd.pass.staging` from the Expo config plugin and docs (no staging
+  environment exists in the SDK).
+
 ### Added
 
 - Initial release of krdpass-auth-react-native

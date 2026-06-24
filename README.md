@@ -34,7 +34,12 @@ npm run build
 
 ### Android core dependency (GitHub Packages)
 
-The Android side of this SDK depends on the native KRDPASS core, published privately to
+> **Note:** distribution is moving to public package registries (Maven Central / npm /
+> pub.dev). Once the Android core is on Maven Central, no token or extra repository will
+> be needed — consumers will just use `mavenCentral()`. The GitHub Packages steps below
+> are interim and subject to change.
+
+The Android side of this SDK depends on the native KRDPASS core, published to
 **GitHub Packages** as `krd.pass:krdpass-auth`. A Gradle library cannot declare the
 repositories it is resolved from, so **your app** must add the repository (and a
 `read:packages` token) to `android/build.gradle`:
@@ -153,7 +158,6 @@ Apply native settings (the Expo config plugin only runs in Expo config flows):
 ```xml
 <queries>
   <package android:name="krd.pass" />
-  <package android:name="krd.pass.staging" />
   <package android:name="krd.pass.dev" />
 </queries>
 ```
