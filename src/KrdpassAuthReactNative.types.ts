@@ -11,10 +11,7 @@ export type KrdpassEnvironment = "production" | "development";
  * SDK is initialized — matching the iOS/Android/Flutter SDKs.
  */
 export interface SignInConfig {
-  clientId?: string;
-  redirectUri?: string;
   scopes?: string | string[];
-  environment?: KrdpassEnvironment;
   /** Optional authentication timeout in seconds. */
   timeout?: number;
 }
@@ -235,8 +232,6 @@ export class KrdpassAuthError extends Error {
  * Configuration for server-mediated authenticate call
  */
 export interface AuthenticateConfig {
-  clientId?: string;
-  redirectUri?: string;
   requestUri: string;
   state?: string;
   /**
@@ -244,7 +239,6 @@ export interface AuthenticateConfig {
    * If omitted, native SDK defaults are used.
    */
   timeout?: number;
-  environment?: KrdpassEnvironment;
 }
 
 /**
@@ -252,8 +246,6 @@ export interface AuthenticateConfig {
  * Validates ID token signature using JWKS endpoint.
  */
 export interface VerifyTokenConfig {
-  clientId?: string;
-  environment?: KrdpassEnvironment;
   idToken: string;
 }
 
@@ -262,8 +254,6 @@ export interface VerifyTokenConfig {
  * Fetches user claims from the userinfo endpoint.
  */
 export interface GetUserInfoConfig {
-  clientId?: string;
-  environment?: KrdpassEnvironment;
   accessToken: string;
 }
 
@@ -272,8 +262,6 @@ export interface GetUserInfoConfig {
  * Exchanges a refresh token for new access and ID tokens.
  */
 export interface RefreshTokensConfig {
-  clientId?: string;
-  environment?: KrdpassEnvironment;
   refreshToken: string;
   scope?: string;
 }
@@ -283,8 +271,6 @@ export interface RefreshTokensConfig {
  * Invalidates an access or refresh token at the authorization server.
  */
 export interface RevokeTokenConfig {
-  clientId?: string;
-  environment?: KrdpassEnvironment;
   token: string;
   tokenTypeHint?: "access_token" | "refresh_token";
 }

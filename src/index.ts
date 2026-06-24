@@ -95,29 +95,27 @@ export function initialize(config: InitializeConfig): void {
 }
 
 /**
- * Resolve clientId/redirectUri/environment from per-call overrides merged
- * with stored config. Throws if a required value is missing from both.
+ * Resolve clientId/redirectUri/environment from the config stored by
+ * {@link initialize}. Throws if {@link initialize} has not been called — matching
+ * the Android/Flutter SDKs, which are also configured once via initialize().
  */
-function resolveConfig(override?: {
-  clientId?: string;
-  redirectUri?: string;
-  environment?: KrdpassEnvironment;
-}): { clientId: string; redirectUri: string; environment: KrdpassEnvironment } {
-  const clientId = override?.clientId ?? _storedConfig?.clientId;
-  const redirectUri = override?.redirectUri ?? _storedConfig?.redirectUri;
-  const environment = override?.environment ?? _storedConfig?.environment;
+function resolveConfig(): {
+  clientId: string;
+  redirectUri: string;
+  environment: KrdpassEnvironment;
+} {
   return {
     clientId: assertNonEmpty(
-      clientId,
-      "clientId (call initialize() first or pass directly)",
+      _storedConfig?.clientId,
+      "clientId (call initialize() first)",
     ),
     redirectUri: assertHttpsRedirectUri(
       assertNonEmpty(
-        redirectUri,
-        "redirectUri (call initialize() first or pass directly)",
+        _storedConfig?.redirectUri,
+        "redirectUri (call initialize() first)",
       ),
     ),
-    environment: environment ?? "production",
+    environment: _storedConfig?.environment ?? "production",
   };
 }
 
@@ -165,7 +163,7 @@ export async function signIn(
   }
 
   try {
-    const resolved = resolveConfig(config);
+    const resolved = resolveConfig();
     if (
       config.timeout !== undefined &&
       (!Number.isFinite(config.timeout) || config.timeout <= 0)
@@ -218,7 +216,7 @@ export async function signIn(
 export async function getUserInfo(
   config: GetUserInfoConfig,
 ): Promise<KrdpassUserInfo> {
-  const resolved = resolveConfig(config);
+  const resolved = resolveConfig();
   const accessToken = assertNonEmpty(config.accessToken, "accessToken");
   const raw = (await KrdpassAuthReactNativeModule.getUserInfo({
     ...config,
@@ -274,7 +272,7 @@ function mapUserInfo(raw: Record<string, any>): KrdpassUserInfo {
 export async function refreshTokens(
   config: RefreshTokensConfig,
 ): Promise<KrdpassTokenResult> {
-  const resolved = resolveConfig(config);
+  const resolved = resolveConfig();
   const refreshToken = assertNonEmpty(config.refreshToken, "refreshToken");
   return (await KrdpassAuthReactNativeModule.refreshTokens({
     ...config,
@@ -290,7 +288,7 @@ export async function refreshTokens(
  * @param config - Configuration including token to revoke
  */
 export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
-  const resolved = resolveConfig(config);
+  const resolved = resolveConfig();
   const token = assertNonEmpty(config.token, "token");
   await KrdpassAuthReactNativeModule.revokeToken({
     ...config,
@@ -320,7 +318,7 @@ export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
 export async function verifyToken(
   config: VerifyTokenConfig,
 ): Promise<TokenClaims> {
-  const resolved = resolveConfig(config);
+  const resolved = resolveConfig();
   const idToken = assertNonEmpty(config.idToken, "idToken");
   return (await KrdpassAuthReactNativeModule.verifyToken({
     ...config,
@@ -357,7 +355,7 @@ export async function authenticate(
   }
 
   try {
-    const resolved = resolveConfig(config);
+    const resolved = resolveConfig();
     const requestUri = assertNonEmpty(config.requestUri, "requestUri");
     const timeout =
       config.timeout === undefined ? undefined : Number(config.timeout);
@@ -407,16 +405,13 @@ export async function cancelPendingAuthentication(options?: {
 
 /**
  * Build the KRDPass authorization URL for server-mediated flow.
- * Requires clientId, redirectUri, and environment from config.
+ * Uses clientId/redirectUri/environment from initialize().
  */
 export function buildAuthorizationUrl(options: {
   requestUri: string;
   state?: string;
-  clientId?: string;
-  redirectUri?: string;
-  environment?: KrdpassEnvironment;
 }): string {
-  const resolved = resolveConfig(options);
+  const resolved = resolveConfig();
   const requestUri = assertNonEmpty(options.requestUri, "requestUri");
   const baseUrl =
     resolved.environment === "production"

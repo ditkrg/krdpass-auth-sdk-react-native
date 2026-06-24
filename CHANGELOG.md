@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (cross-SDK uniformity)
 
+- Configuration is now set once via `initialize()` and reused by every call —
+  `signIn`/`authenticate`/`getUserInfo`/`verifyToken`/etc. no longer accept per-call
+  `clientId`/`redirectUri`/`environment` overrides. This makes the SDK used
+  identically to the Android/Flutter SDKs (initialize once, then call).
 - `getUserInfo()` now returns a typed `KrdpassUserInfo` (mapped camelCase claims +
   `citizenFullName` + `raw`), matching the Android/Flutter SDKs.
 - Error-code set aligned across platforms: added `network_error` and `access_denied`

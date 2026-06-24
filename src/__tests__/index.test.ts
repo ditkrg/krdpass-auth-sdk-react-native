@@ -91,26 +91,22 @@ describe("decodeTokenUnverified", () => {
 });
 
 describe("buildAuthorizationUrl", () => {
-  const base = {
-    requestUri: "urn:ietf:params:oauth:request_uri:abc",
-    clientId: "my-client",
-    redirectUri: "https://app.example.com/cb",
-  };
+  const requestUri = "urn:ietf:params:oauth:request_uri:abc";
+  const clientId = "my-client";
+  const redirectUri = "https://app.example.com/cb";
 
   it("builds a production authorize URL with the required params", () => {
-    const url = buildAuthorizationUrl({ ...base, environment: "production" });
+    initialize({ clientId, redirectUri, environment: "production" });
+    const url = buildAuthorizationUrl({ requestUri });
     expect(url).toContain("https://app.pass.krd/connect/authorize");
     expect(url).toContain("client_id=my-client");
-    expect(url).toContain(encodeURIComponent(base.requestUri));
-    expect(url).toContain(encodeURIComponent(base.redirectUri));
+    expect(url).toContain(encodeURIComponent(requestUri));
+    expect(url).toContain(encodeURIComponent(redirectUri));
   });
 
   it("uses the development host and includes state", () => {
-    const url = buildAuthorizationUrl({
-      ...base,
-      environment: "development",
-      state: "xyz",
-    });
+    initialize({ clientId, redirectUri, environment: "development" });
+    const url = buildAuthorizationUrl({ requestUri, state: "xyz" });
     expect(url).toContain("https://app.krdpass.dev.krd/connect/authorize");
     expect(url).toContain("state=xyz");
   });
@@ -255,11 +251,14 @@ describe("authenticate()", () => {
   });
 });
 
-describe("resolveConfig validation", () => {
-  it("rejects a whitespace-only clientId override", async () => {
-    await expect(
-      signIn({ clientId: "   ", redirectUri: "https://app.example.com/cb" }),
-    ).rejects.toThrow(/clientId.*required/i);
+describe("config validation (stateful — config comes from initialize)", () => {
+  it("initialize rejects a whitespace-only clientId", () => {
+    expect(() =>
+      initialize({
+        clientId: "   ",
+        redirectUri: "https://app.example.com/cb",
+      }),
+    ).toThrow(/clientId.*required/i);
   });
 
   it("defaults environment to production when unset", async () => {
