@@ -1,0 +1,18 @@
+# Keeps npm (JS) + Gradle (Android native) dependencies monitored for security
+# advisories. The shipped JS package has no runtime deps; this mainly watches the
+# Android native module deps and the dev toolchain.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
