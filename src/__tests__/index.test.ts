@@ -1,15 +1,21 @@
 import KrdpassAuthReactNativeModule from "../KrdpassAuthReactNativeModule";
 import {
+  authenticate,
   buildAuthorizationUrl,
   decodeTokenUnverified,
   generateState,
+  getUserInfo,
   initialize,
   isAuthResultBusy,
   isAuthResultCancelled,
   isAuthResultError,
   isAuthResultSuccess,
   isAuthResultTimeout,
+  KrdpassAuthError,
+  refreshTokens,
+  revokeToken,
   signIn,
+  verifyToken,
 } from "../index";
 
 // Pure-logic unit tests: mock the RN surface the module imports at load time.
@@ -22,7 +28,16 @@ jest.mock("react-native", () => ({
 // The native module self-loads on import (and throws off-device), so mock it.
 jest.mock("../KrdpassAuthReactNativeModule", () => ({
   __esModule: true,
-  default: { signIn: jest.fn() },
+  default: {
+    signIn: jest.fn(),
+    authenticate: jest.fn(),
+    getUserInfo: jest.fn(),
+    refreshTokens: jest.fn(),
+    revokeToken: jest.fn(),
+    verifyToken: jest.fn(),
+    handleURL: jest.fn(),
+    cancelAuthentication: jest.fn(),
+  },
 }));
 jest.mock("react-native-get-random-values", () => ({}));
 
@@ -51,7 +66,10 @@ describe("generateState", () => {
 
 describe("decodeTokenUnverified", () => {
   it("decodes JWT claims", () => {
-    const token = `header.${encodeSegment({ sub: "123", scope: "openid" })}.sig`;
+    const token = `header.${encodeSegment({
+      sub: "123",
+      scope: "openid",
+    })}.sig`;
     const claims = decodeTokenUnverified(token);
     expect(claims.sub).toBe("123");
     expect(claims.scope).toBe("openid");
@@ -150,5 +168,138 @@ describe("auth result type guards", () => {
     expect(isAuthResultTimeout({ error: "timeout" })).toBe(true);
     expect(isAuthResultBusy({ error: "busy" })).toBe(true);
     expect(isAuthResultCancelled({ error: "timeout" })).toBe(false);
+  });
+});
+
+describe("signIn error contract (throws like iOS/Android/Flutter)", () => {
+  const nativeSignIn = () => KrdpassAuthReactNativeModule.signIn as jest.Mock;
+  beforeEach(() => {
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+  });
+
+  it("throws a discriminable KrdpassAuthError when native resolves an error map (Android cancel)", async () => {
+    nativeSignIn().mockResolvedValue({
+      error: "cancelled",
+      error_description: "User cancelled authentication",
+    });
+    const err = await signIn().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(KrdpassAuthError);
+    expect((err as KrdpassAuthError).code).toBe("cancelled");
+    expect((err as KrdpassAuthError).errorDescription).toBe(
+      "User cancelled authentication",
+    );
+  });
+
+  it("throws (never resolves a fake token) on a CSRF state_mismatch", async () => {
+    nativeSignIn().mockResolvedValue({ error: "state_mismatch" });
+    await expect(signIn()).rejects.toMatchObject({ code: "state_mismatch" });
+  });
+
+  it("returns the token result unchanged on success", async () => {
+    nativeSignIn().mockResolvedValue({
+      accessToken: "at",
+      tokenType: "Bearer",
+      expiresIn: 3600,
+    });
+    const tokens = await signIn();
+    expect(tokens.accessToken).toBe("at");
+  });
+});
+
+describe("signIn timeout validation", () => {
+  beforeEach(() => {
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+  });
+  it.each([0, -5, NaN, Infinity])(
+    "rejects a non-positive / non-finite timeout: %p",
+    async (timeout) => {
+      await expect(signIn({ timeout })).rejects.toThrow(/positive/i);
+    },
+  );
+});
+
+describe("authenticate()", () => {
+  const nativeAuth = () =>
+    KrdpassAuthReactNativeModule.authenticate as jest.Mock;
+  beforeEach(() => {
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+    nativeAuth().mockReset();
+  });
+
+  it("rejects a non-positive timeout WITHOUT calling native", async () => {
+    const result = await authenticate({ requestUri: "urn:abc", timeout: 0 });
+    expect(result).toMatchObject({ error: "invalid_request" });
+    expect(nativeAuth()).not.toHaveBeenCalled();
+  });
+
+  it("normalizes native snake_case error_description to errorDescription", async () => {
+    nativeAuth().mockResolvedValue({
+      error: "state_mismatch",
+      error_description: "State did not match",
+    });
+    const result = await authenticate({ requestUri: "urn:abc" });
+    expect(result).toEqual({
+      error: "state_mismatch",
+      errorDescription: "State did not match",
+    });
+  });
+
+  it("passes a success result through unchanged", async () => {
+    nativeAuth().mockResolvedValue({ code: "auth-code", state: "xyz" });
+    const result = await authenticate({ requestUri: "urn:abc" });
+    expect(isAuthResultSuccess(result)).toBe(true);
+    expect(result).toEqual({ code: "auth-code", state: "xyz" });
+  });
+});
+
+describe("resolveConfig validation", () => {
+  it("rejects a whitespace-only clientId override", async () => {
+    await expect(
+      signIn({ clientId: "   ", redirectUri: "https://app.example.com/cb" }),
+    ).rejects.toThrow(/clientId.*required/i);
+  });
+
+  it("defaults environment to production when unset", async () => {
+    const nativeSignIn = KrdpassAuthReactNativeModule.signIn as jest.Mock;
+    nativeSignIn.mockClear();
+    nativeSignIn.mockResolvedValue({
+      accessToken: "at",
+      tokenType: "Bearer",
+      expiresIn: 3600,
+    });
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+    await signIn({ scopes: ["openid"] });
+    expect(nativeSignIn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ environment: "production" }),
+    );
+  });
+});
+
+describe("required-field guards reject blank values", () => {
+  beforeEach(() => {
+    initialize({ clientId: "c", redirectUri: "https://app.example.com/cb" });
+  });
+  it("getUserInfo requires accessToken", async () => {
+    await expect(getUserInfo({ accessToken: "  " })).rejects.toThrow(
+      /accessToken.*required/i,
+    );
+  });
+  it("refreshTokens requires refreshToken", async () => {
+    await expect(refreshTokens({ refreshToken: "" })).rejects.toThrow(
+      /refreshToken.*required/i,
+    );
+  });
+  it("revokeToken requires token", async () => {
+    await expect(revokeToken({ token: "   " })).rejects.toThrow(
+      /token.*required/i,
+    );
+  });
+  it("verifyToken requires idToken", async () => {
+    await expect(verifyToken({ idToken: "" })).rejects.toThrow(
+      /idToken.*required/i,
+    );
   });
 });

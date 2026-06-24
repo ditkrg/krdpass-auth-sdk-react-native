@@ -32,10 +32,59 @@ cd node_modules/krdpass-auth-react-native
 npm run build
 ```
 
+### Android core dependency (GitHub Packages)
+
+The Android side of this SDK depends on the native KRDPASS core, published privately to
+**GitHub Packages** as `krd.pass:krdpass-auth`. A Gradle library cannot declare the
+repositories it is resolved from, so **your app** must add the repository (and a
+`read:packages` token) to `android/build.gradle`:
+
+```groovy
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven {
+      url = uri('https://maven.pkg.github.com/ditkrg/krdpass-auth-sdk-android')
+      credentials {
+        username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
+        password = project.findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN')
+      }
+    }
+  }
+}
+```
+
+Supply the credentials via `~/.gradle/gradle.properties` (`gpr.user` / `gpr.token`) or the
+`GITHUB_ACTOR` / `GITHUB_TOKEN` environment variables; the token only needs the
+`read:packages` scope. Without this, the Android build fails with
+`Could not find krd.pass:krdpass-auth`. See `example/android/build.gradle` for a working
+reference.
+
+### Calling-app signing certificate
+
+KRDPASS validates the **signing certificate of the app that launches it**, not just the
+`clientId`. During onboarding you register your app's certificate SHA-256 fingerprint
+(plus package name / bundle ID) against your client. A build signed with a **different**
+key is rejected with `invalid_client` even when the `clientId`, `redirectUri`, and scopes
+are all correct.
+
+- **Android:** the SHA-256 of the certificate the APK/AAB is signed with must be
+  registered. This includes debug, internal-distribution, and Play App Signing
+  certificates — register every fingerprint you ship from, or sign with one registered
+  key. The bundled example signs its debug build with the registered demo keystore (see
+  `example/android/key.properties.example`).
+- **iOS:** the registered bundle ID and team must match the build.
+
 ## Quickstart
 
 ```ts
-import { initialize, signIn, authenticate, getUserInfo } from 'krdpass-auth-react-native';
+import {
+  initialize,
+  signIn,
+  getUserInfo,
+  KrdpassAuthError,
+} from 'krdpass-auth-react-native';
 
 // Call once at app startup. Stores clientId/redirectUri/environment as
 // defaults for every subsequent call (you can still override per call).
@@ -47,14 +96,17 @@ initialize({
 
 // Client-only direct flow: the SDK handles PKCE, launches KRDPASS,
 // and exchanges the authorization code for tokens. No backend required.
-const tokens = await signIn({
-  clientId: 'your-client-id',
-  redirectUri: 'https://auth.your-app.example.com/_krdpass/oauth/callback',
-  scopes: ['openid', 'profile'],
-});
-
-// Fetch user claims with the access token.
-const user = await getUserInfo({ accessToken: tokens.accessToken });
+// signIn() resolves with tokens on success and THROWS on cancel/failure
+// (identically on Android and iOS).
+try {
+  const tokens = await signIn({ scopes: ['openid', 'profile'] });
+  const user = await getUserInfo({ accessToken: tokens.accessToken });
+} catch (e) {
+  if (e instanceof KrdpassAuthError) {
+    // e.code: 'cancelled' | 'state_mismatch' | 'timeout' | 'no_code' | ...
+    // e.errorDescription: human-readable reason (if provided)
+  }
+}
 ```
 
 For server-mediated production flows, your backend performs PAR + token

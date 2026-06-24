@@ -8,6 +8,7 @@
     "android",
     "ios",
     "src",
+    "!src/**/__tests__",
     "build",
     "plugin/build",
     "app.plugin.js",

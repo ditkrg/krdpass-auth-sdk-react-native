@@ -18,7 +18,7 @@ import {
   AuthenticateConfig,
   GetUserInfoConfig,
   InitializeConfig,
-  KrdpassConfig,
+  KrdpassAuthError,
   KrdpassEnvironment,
   KrdpassTokenResult,
   PkcePair,
@@ -52,7 +52,7 @@ export {
   AuthenticateConfig,
   GetUserInfoConfig,
   InitializeConfig,
-  KrdpassConfig,
+  KrdpassAuthError,
   KrdpassEnvironment,
   KrdpassTokenResult,
   PkcePair,
@@ -119,8 +119,10 @@ function resolveConfig(override?: {
   };
 }
 
+// Host class excludes '@' so a userinfo authority (https://evil.com@good.com)
+// cannot masquerade as an allowed host in this convenience guard.
 const HTTPS_REDIRECT_URI_REGEX =
-  /^https:\/\/[^/\s?#]+(?::\d{1,5})?(?:[/?#].*)?$/i;
+  /^https:\/\/[^/\s?#@]+(?::\d{1,5})?(?:[/?#].*)?$/i;
 
 const assertNonEmpty = (value: string | undefined, field: string): string => {
   const normalized = value?.trim();
@@ -171,13 +173,35 @@ export async function signIn(
     const scopes = Array.isArray(config.scopes)
       ? config.scopes.join(" ")
       : config.scopes;
-    return (await KrdpassAuthReactNativeModule.signIn({
+    const native = (await KrdpassAuthReactNativeModule.signIn({
       ...config,
       clientId: resolved.clientId,
       redirectUri: resolved.redirectUri,
       environment: resolved.environment,
       ...(scopes ? { scopes } : {}),
-    })) as KrdpassTokenResult;
+    })) as
+      | KrdpassTokenResult
+      | (AuthResultErrorBase & { error_description?: string });
+    // On Android the native module resolves an error-shaped map (rather than
+    // rejecting) for cancel/state_mismatch/timeout/no_code/invalid_redirect, while
+    // iOS rejects. Normalize both into a thrown KrdpassAuthError so signIn honors
+    // its documented `@throws` contract and behaves identically on every platform.
+    // (The trust path always fails closed — no tokens are emitted on these paths.)
+    if (
+      native &&
+      typeof native === "object" &&
+      "error" in native &&
+      !("accessToken" in native)
+    ) {
+      const err = native as AuthResultErrorBase & {
+        error_description?: string;
+      };
+      throw new KrdpassAuthError(
+        err.error,
+        err.errorDescription ?? err.error_description,
+      );
+    }
+    return native as KrdpassTokenResult;
   } finally {
     sub?.remove();
   }
@@ -242,9 +266,13 @@ export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
  *
  * Fetches the public keys from the JWKS endpoint and validates:
  * - RS256 signature
+ * - Audience (`aud` must equal your clientId)
  * - Token expiration (exp claim)
  * - Token not-before (nbf claim)
  * - Token issued-at (iat claim)
+ *
+ * Note: this convenience verifier does not pin the issuer. The client-only
+ * {@link signIn} flow performs the full issuer + nonce-bound validation.
  *
  * @param config - Configuration including idToken to verify
  * @returns Promise resolving to verified token claims

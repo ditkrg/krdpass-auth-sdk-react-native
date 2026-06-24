@@ -3,13 +3,6 @@
  */
 export type KrdpassEnvironment = "production" | "development";
 
-export interface KrdpassConfig {
-  clientId: string;
-  redirectUri: string;
-  scopes?: string | string[];
-  environment?: KrdpassEnvironment;
-}
-
 /**
  * Configuration for the client-only {@link signIn} flow.
  *
@@ -167,6 +160,38 @@ export function isAuthResultTimeout(r: AuthResult): r is AuthResultTimeout {
 
 export function isAuthResultBusy(r: AuthResult): r is AuthResultBusy {
   return isAuthResultError(r) && r.error === "busy";
+}
+
+/**
+ * Error thrown by the client-only {@link signIn} flow when authentication
+ * fails or is cancelled.
+ *
+ * `code` is one of {@link AuthErrorCode} (e.g. `"cancelled"`, `"state_mismatch"`,
+ * `"timeout"`) or a forwarded server/native error string, so callers can branch
+ * on the failure:
+ *
+ * ```ts
+ * try {
+ *   const tokens = await signIn();
+ * } catch (e) {
+ *   if (e instanceof KrdpassAuthError && e.code === "cancelled") { ... }
+ * }
+ * ```
+ *
+ * Mirrors the throwing contract of the iOS/Android/Flutter SDKs.
+ */
+export class KrdpassAuthError extends Error {
+  readonly code: string;
+  readonly errorDescription?: string;
+
+  constructor(code: string, errorDescription?: string) {
+    super(errorDescription ?? code);
+    this.name = "KrdpassAuthError";
+    this.code = code;
+    this.errorDescription = errorDescription;
+    // Restore the prototype chain (transpilation to ES5 otherwise breaks instanceof).
+    Object.setPrototypeOf(this, KrdpassAuthError.prototype);
+  }
 }
 
 /**
