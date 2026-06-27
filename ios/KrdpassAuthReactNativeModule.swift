@@ -52,9 +52,10 @@ public class KrdpassAuthReactNativeModule: Module {
                  promise.reject("AUTH_FAILED", "Unknown error")
             }
         } catch let error as KrdpassError {
-            promise.reject("AUTH_FAILED", String(describing: error))
+            // Surface the structured code (cancelled/state_mismatch/invalid_id_token/...)
+            promise.reject(error.code ?? "authentication_failed", error.errorDescription ?? "Authentication failed")
         } catch {
-            promise.reject("AUTH_FAILED", error.localizedDescription)
+            promise.reject("network_error", error.localizedDescription)
         }
       }
     }
