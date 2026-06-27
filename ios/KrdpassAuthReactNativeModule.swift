@@ -163,7 +163,8 @@ public class KrdpassAuthReactNativeModule: Module {
          let krdpassConfig = KrdpassConfig(clientId: clientId, redirectUri: "", environment: environment)
          let auth = KrdpassAuth(config: krdpassConfig)
          do {
-            let claims = try await auth.verifyToken(idToken, audience: clientId)
+            // verifyToken derives the audience from the configured clientId.
+            let claims = try await auth.verifyToken(idToken: idToken)
             promise.resolve(claims)
          } catch {
             promise.reject("VERIFY_ERROR", error.localizedDescription)
@@ -259,11 +260,7 @@ public class KrdpassAuthReactNativeModule: Module {
           promise.resolve(false)
           return
         }
-        if timeout {
-          auth.timeout()
-        } else {
-          auth.cancel()
-        }
+        auth.cancelPendingAuthentication(timeout: timeout)
         promise.resolve(true)
       }
     }
