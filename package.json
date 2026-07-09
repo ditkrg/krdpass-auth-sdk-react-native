@@ -1,7 +1,7 @@
 {
   "name": "krdpass-auth-react-native",
-  "version": "1.0.0",
-  "description": "Official KRDPASS Authentication SDK for React Native",
+  "version": "1.0.1",
+  "description": "KRDPASS Auth SDK for React Native.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [

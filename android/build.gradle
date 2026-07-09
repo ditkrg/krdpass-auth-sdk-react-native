@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 group = 'krdpass.auth.reactnative'
-version = '1.0.0'
+version = '1.0.1'
 
 def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
 apply from: expoModulesCorePlugin
@@ -35,7 +35,7 @@ android {
   namespace "krdpass.auth.reactnative"
   defaultConfig {
     versionCode 1
-    versionName "1.0.0"
+    versionName "1.0.1"
   }
   lintOptions {
     abortOnError false
@@ -50,7 +50,7 @@ dependencies {
   if (localKrdpassAndroid != null) {
     implementation localKrdpassAndroid
   } else {
-    implementation "krd.pass:krdpass-auth:1.0.0"
+    implementation "krd.pass:krdpass-auth:1.0.1"
   }
   // coroutines-core is used (module.scope.launch).
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
