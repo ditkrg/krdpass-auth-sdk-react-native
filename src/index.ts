@@ -498,7 +498,10 @@ const btoa = (input: string): string => {
 const chars =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 const atob = (input: string) => {
-  const str = input.replace(/=+$/, "");
+  let str = input;
+  while (str.endsWith("=")) {
+    str = str.slice(0, -1);
+  }
   let output = "";
 
   if (str.length % 4 === 1) {
