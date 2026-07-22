@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.author         = package['author']
   s.homepage       = package['homepage']
   s.platform       = :ios, '15.5'
-  s.swift_version  = '5.9'
+  s.swift_version  = '6.0'
   s.source         = { git: 'https://github.com/ditkrg/krdpass-auth-sdk-react-native.git' }
   s.static_framework = true
 

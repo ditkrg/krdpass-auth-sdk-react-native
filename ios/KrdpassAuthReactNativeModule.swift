@@ -1,7 +1,7 @@
 import ExpoModulesCore
 import KrdpassAuth
 
-public class KrdpassAuthReactNativeModule: Module {
+public final class KrdpassAuthReactNativeModule: Module, @unchecked Sendable {
   private var activeAuth: KrdpassAuth?
 
   public func definition() -> ModuleDefinition {
@@ -36,7 +36,7 @@ public class KrdpassAuthReactNativeModule: Module {
         do {
             let result = try await self.activeAuth?.signIn(scopes: scopes, timeout: timeout)
             if let tokens = result {
-                 promise.resolve(self.tokensToMap(tokens))
+                 promise.resolve(Self.tokensToMap(tokens))
             } else {
                  promise.reject("AUTH_FAILED", "Unknown error")
             }
@@ -92,7 +92,7 @@ public class KrdpassAuthReactNativeModule: Module {
          let auth = KrdpassAuth(config: krdpassConfig)
          do {
             let result = try await auth.refreshTokens(refreshToken: refreshToken, scope: scope)
-            promise.resolve(self.tokensToMap(result))
+            promise.resolve(Self.tokensToMap(result))
          } catch {
             promise.reject("REFRESH_ERROR", error.localizedDescription)
          }
@@ -274,7 +274,7 @@ public class KrdpassAuthReactNativeModule: Module {
   }
 
   /// Builds the 6-key token map shared by signIn's and refreshTokens' resolutions.
-  private func tokensToMap(_ tokens: KrdpassTokenResult) -> [String: Any?] {
+  private static func tokensToMap(_ tokens: KrdpassTokenResult) -> [String: Any?] {
     [
       "accessToken": tokens.accessToken,
       "idToken": tokens.idToken,

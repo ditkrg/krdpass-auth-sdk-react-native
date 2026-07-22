@@ -18,8 +18,7 @@ type KrdpassNativeModule = {
 
 function loadNativeModule(): KrdpassNativeModule {
   const rnNativeModule = NativeModules.KrdpassAuthReactNative as
-    | KrdpassNativeModule
-    | undefined;
+    KrdpassNativeModule | undefined;
   if (rnNativeModule) return rnNativeModule;
 
   try {

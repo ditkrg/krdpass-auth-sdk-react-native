@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1]
+
+### Fixed
+
+- Consume Android core 1.1.1 so Expo SDK 55 applications no longer receive
+  Kotlin metadata newer than their compiler can read.
+- Make the Expo iOS bridge's main-actor ownership explicit so it compiles with
+  Swift 6 concurrency checking.
+
+### Changed
+
+- Update the Expo module toolchain and native Android dependencies to the newest
+  versions compatible with Expo SDK 55.
+- Raise the podspec's Swift language version to 6.0.
+
 ## [1.1.0]
 
 ### Security

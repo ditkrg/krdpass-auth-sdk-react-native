@@ -1,13 +1,12 @@
 import { Linking, Platform } from "react-native";
 
 import "react-native-get-random-values";
-import {
+import type {
   AuthResult,
   AuthResultError,
   AuthenticateConfig,
   GetUserInfoConfig,
   InitializeConfig,
-  KrdpassAuthError,
   KrdpassEnvironment,
   KrdpassTokenResult,
   KrdpassUserInfo,
@@ -17,6 +16,9 @@ import {
   SignInConfig,
   TokenClaims,
   VerifyTokenConfig,
+} from "./KrdpassAuthReactNative.types";
+import {
+  KrdpassAuthError,
   isAuthResultError,
   installUrlFor,
   makeTokenResult,
@@ -24,7 +26,7 @@ import {
 } from "./KrdpassAuthReactNative.types";
 import KrdpassAuthReactNativeModule from "./KrdpassAuthReactNativeModule";
 
-export {
+export type {
   AuthErrorCode,
   AuthResult,
   AuthResultBusy,
@@ -42,10 +44,7 @@ export {
   AuthenticateConfig,
   GetUserInfoConfig,
   InitializeConfig,
-  KrdpassAuthError,
   KrdpassEnvironment,
-  KrdpassScopes,
-  KrdpassMessages,
   KrdpassTokenResult,
   KrdpassUserInfo,
   PkcePair,
@@ -54,6 +53,12 @@ export {
   SignInConfig,
   TokenClaims,
   VerifyTokenConfig,
+} from "./KrdpassAuthReactNative.types";
+
+export {
+  KrdpassAuthError,
+  KrdpassScopes,
+  KrdpassMessages,
   isAuthResultBusy,
   isAuthResultCancelled,
   isAuthResultError,
@@ -481,10 +486,10 @@ const btoa = (input: string): string => {
     const index3 = ((b & 15) << 2) | (c >> 6);
     const index4 = c & 63;
     output +=
-      btoaChars[index1] +
-      btoaChars[index2] +
-      (isNaN(b) ? "=" : btoaChars[index3]) +
-      (isNaN(c) ? "=" : btoaChars[index4]);
+      btoaChars.charAt(index1) +
+      btoaChars.charAt(index2) +
+      (isNaN(b) ? "=" : btoaChars.charAt(index3)) +
+      (isNaN(c) ? "=" : btoaChars.charAt(index4));
   }
   return output;
 };
@@ -527,13 +532,14 @@ const atob = (input: string) => {
  */
 export function decodeTokenUnverified(token: string): TokenClaims {
   const parts = token.split(".");
-  if (parts.length !== 3) {
+  const payload = parts[1];
+  if (parts.length !== 3 || !payload) {
     throw new Error("Not a valid JWT: expected three parts");
   }
   try {
     // atob yields a binary (Latin1) string; re-decode it as UTF-8 so non-ASCII claims
     // (e.g. Kurdish/Arabic display names) are preserved instead of becoming mojibake.
-    const binary = atob(base64UrlToBase64(parts[1]));
+    const binary = atob(base64UrlToBase64(payload));
     const json = decodeURIComponent(
       binary
         .split("")

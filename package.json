@@ -1,11 +1,12 @@
 {
   "name": "krdpass-auth-react-native",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "KRDPASS Auth SDK for React Native.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
     "android",
+    "!android/build",
     "ios",
     "src",
     "!src/**/__tests__",
@@ -43,13 +44,13 @@
     "url": "https://github.com/ditkrg/krdpass-auth-sdk-react-native/issues"
   },
   "devDependencies": {
-    "@expo/config-plugins": "~55.0.10",
+    "@expo/config-plugins": "~57.0.6",
     "@types/jest": "^29.5.14",
-    "@types/node": "^25.6.0",
-    "expo-module-scripts": "^55.0.2",
+    "@types/node": "^26.1.1",
+    "expo-module-scripts": "^56.0.3",
     "jest": "^29.7.0",
-    "react-native-get-random-values": "~1.11.0",
-    "ts-jest": "^29.4.11",
+    "react-native-get-random-values": "^2.0.0",
+    "ts-jest": "^29.4.12",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
@@ -78,5 +79,8 @@
     "@babel/core": "^7.29.7",
     "brace-expansion@1": "^1.1.16",
     "brace-expansion@5": "^5.0.7"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
   }
 }

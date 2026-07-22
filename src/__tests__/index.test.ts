@@ -1,3 +1,4 @@
+import { messageForErrorCode } from "../KrdpassAuthReactNative.types";
 import KrdpassAuthReactNativeModule from "../KrdpassAuthReactNativeModule";
 import {
   authenticate,
@@ -19,7 +20,6 @@ import {
   verifyToken,
 } from "../index";
 // messageForErrorCode is internal (not part of the public surface), so import it from its module.
-import { messageForErrorCode } from "../KrdpassAuthReactNative.types";
 
 // Pure-logic unit tests: mock the RN surface the module imports at load time.
 // (ts-jest hoists these jest.mock calls above the imports above.)
@@ -112,7 +112,6 @@ describe("canonical messages parity", () => {
         "state is required and cannot be blank. Pass the state returned by your backend's PAR call, or use signIn().",
     });
   });
-
 
   it("maps wire error codes to canonical messages", () => {
     expect(messageForErrorCode("cancelled")).toBe(KrdpassMessages.CANCELLED);

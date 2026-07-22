@@ -24,7 +24,7 @@ production.
 Add the package as a git dependency:
 
 ```bash
-npm install github:ditkrg/krdpass-auth-sdk-react-native#v1.1.0
+npm install github:ditkrg/krdpass-auth-sdk-react-native#v1.1.1
 ```
 
 This package requires the `react-native-get-random-values` peer dependency (it powers
