@@ -43,7 +43,7 @@
     "url": "https://github.com/ditkrg/krdpass-auth-sdk-react-native/issues"
   },
   "devDependencies": {
-    "@expo/config-plugins": "~55.0.10",
+    "@expo/config-plugins": "~57.0.5",
     "@types/jest": "^29.5.14",
     "@types/node": "^25.6.0",
     "expo-module-scripts": "^55.0.2",
