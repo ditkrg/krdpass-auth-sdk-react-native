@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'krdpass.auth.reactnative'
-version = '1.1.1'
+version = '1.1.2'
 
 // If you want to use the managed Android SDK versions from expo-modules-core, set this to true.
 // The Android SDK versions will be bumped from time to time in SDK releases and may introduce breaking changes in your module code.
@@ -32,7 +32,7 @@ android {
   namespace "krdpass.auth.reactnative"
   defaultConfig {
     versionCode 1
-    versionName "1.1.1"
+    versionName "1.1.2"
   }
   lintOptions {
     abortOnError false
