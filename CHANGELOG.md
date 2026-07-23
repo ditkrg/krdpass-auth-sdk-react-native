@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0]
+
+### Changed
+
+- Replace the Expo Modules runtime bridge with a Codegen TurboModule and standard React Native
+  autolinking on Android and iOS, while retaining legacy-architecture compatibility for React
+  Native 0.81. Bare React Native consumers no longer install Expo Modules.
+- Keep the bundled Expo config plugin for Expo Prebuild/EAS native configuration only.
+- Add explicit Expo development/EAS, Expo Go, and bare React Native compatibility guidance.
+- Gate releases on clean packed-package builds in bare React Native and Expo consumers on
+  Android and iOS, plus React Native 0.81.6 Android builds in both architectures.
+
+### Fixed
+
+- Resolve the Expo config plugin through the consuming Expo SDK without imposing Expo on bare
+  React Native applications.
+- Settle the original Android authentication promise when cancellation wins a result race.
+- Declare React Native's generated module dependencies rather than `ExpoModulesCore` in the
+  iOS podspec.
+
 ## [1.1.3]
 
 ### Security

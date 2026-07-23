@@ -1,18 +1,24 @@
 import {
-  ConfigPlugin,
-  withAndroidManifest,
-  withDangerousMod,
+  type ConfigPlugin,
   AndroidConfig,
-} from "@expo/config-plugins";
-import * as fs from "fs";
-import * as path from "path";
+  createRunOncePlugin,
+  withAndroidManifest,
+  withPodfile,
+} from "expo/config-plugins";
+
+const { name: packageName, version: packageVersion } = require("../../package.json") as {
+  name: string;
+  version: string;
+};
 
 // The KRDPASS native iOS core this module depends on. It is not on the CocoaPods trunk,
 // so the host Podfile must declare its git source. Keep the tag in step with the core release.
 const KRDPASS_AUTH_POD =
   "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.1.0'";
-const KRDPASS_AUTH_GIT_POD =
-  /^\s*pod\s+['"]KrdpassAuth['"]\s*,\s*:git\s*=>\s*['"]https:\/\/github\.com\/ditkrg\/krdpass-auth-sdk-ios\.git['"].*$/m;
+const POD_BLOCK_START =
+  "# @generated begin krdpass-auth-react-native - expo prebuild (DO NOT MODIFY)";
+const POD_BLOCK_END =
+  "# @generated end krdpass-auth-react-native";
 
 const withKrdPassAuth: ConfigPlugin = (config) => {
   config = withAndroidConfig(config);
@@ -24,40 +30,117 @@ const withKrdPassAuth: ConfigPlugin = (config) => {
 };
 
 /**
- * Inject the KrdpassAuth pod's git source into the prebuild-generated Podfile,
- * or update an older KRDPASS git tag left by a previous plugin release. A
- * deliberate local `:path` override is preserved for SDK development.
+ * Inject the KrdpassAuth pod's git source into the prebuild-generated Podfile.
+ * A deliberate local `:path` override or other host-managed KrdpassAuth pod is
+ * preserved. This uses Expo's Podfile mod rather than a dangerous mod, so the
+ * change participates in the normal prebuild lifecycle.
  */
 const withKrdpassPodSource: ConfigPlugin = (config) => {
-  return withDangerousMod(config, [
-    "ios",
-    async (config) => {
-      const podfilePath = path.join(
-        config.modRequest.platformProjectRoot,
-        "Podfile"
-      );
-      const contents = fs.readFileSync(podfilePath, "utf8");
-      const updatedContents = KRDPASS_AUTH_GIT_POD.test(contents)
-        ? contents.replace(KRDPASS_AUTH_GIT_POD, `  ${KRDPASS_AUTH_POD}`)
-        : contents.includes("pod 'KrdpassAuth'")
-        ? contents
-        : contents.replace(
-            /use_expo_modules!/,
-            `use_expo_modules!\n\n  # KRDPASS native iOS core (added by krdpass-auth-react-native's config plugin).\n  ${KRDPASS_AUTH_POD}`
-          );
-      if (updatedContents !== contents) {
-        fs.writeFileSync(podfilePath, updatedContents);
-      }
-      return config;
-    },
-  ]);
+  return withPodfile(config, (config) => {
+    config.modResults.contents = ensureKrdpassAuthPodSource(
+      config.modResults.contents,
+    );
+    return config;
+  });
 };
+
+/**
+ * Add the iOS core pod to an Expo-generated Podfile without changing it on
+ * subsequent prebuilds. Exported for focused unit tests.
+ */
+export function ensureKrdpassAuthPodSource(contents: string): string {
+  const lineEnding = contents.includes("\r\n") ? "\r\n" : "\n";
+  const hasTrailingLineEnding = contents.endsWith(lineEnding);
+  const lines = contents.split(lineEnding);
+  if (hasTrailingLineEnding) {
+    lines.pop();
+  }
+
+  // A local :path pod is intentionally used by SDK contributors. Any other
+  // host-managed KrdpassAuth declaration also takes precedence over the plugin.
+  const existingPod = lines.find(isKrdpassAuthPod);
+  if (existingPod && !isKrdpassAuthGitPod(existingPod)) {
+    return contents;
+  }
+
+  const generatedBlockStart = lines.findIndex(
+    (line) => line.trim() === POD_BLOCK_START,
+  );
+  const generatedBlockEnd = lines.findIndex(
+    (line) => line.trim() === POD_BLOCK_END,
+  );
+  if (generatedBlockStart !== -1 && generatedBlockEnd > generatedBlockStart) {
+    const indent = leadingWhitespace(lines[generatedBlockStart]);
+    lines.splice(
+      generatedBlockStart,
+      generatedBlockEnd - generatedBlockStart + 1,
+      ...podBlock(indent),
+    );
+    return joinLines(lines, lineEnding, hasTrailingLineEnding);
+  }
+
+  // Upgrade the unmarked declaration emitted by earlier plugin versions.
+  const oldGitPodIndex = lines.findIndex(isKrdpassAuthGitPod);
+  if (oldGitPodIndex !== -1) {
+    lines[oldGitPodIndex] = `${leadingWhitespace(lines[oldGitPodIndex])}${KRDPASS_AUTH_POD}`;
+    return joinLines(lines, lineEnding, hasTrailingLineEnding);
+  }
+
+  const useExpoModulesIndex = lines.findIndex((line) =>
+    line.trimStart().startsWith("use_expo_modules!"),
+  );
+  if (useExpoModulesIndex === -1) {
+    throw new Error(
+      "Unable to add KrdpassAuth to the Podfile: expected use_expo_modules! in the Expo iOS target.",
+    );
+  }
+
+  const indent = leadingWhitespace(lines[useExpoModulesIndex]);
+  lines.splice(useExpoModulesIndex + 1, 0, "", ...podBlock(indent), "");
+  return joinLines(lines, lineEnding, hasTrailingLineEnding);
+}
+
+function podBlock(indent: string): string[] {
+  return [
+    `${indent}${POD_BLOCK_START}`,
+    `${indent}${KRDPASS_AUTH_POD}`,
+    `${indent}${POD_BLOCK_END}`,
+  ];
+}
+
+function isKrdpassAuthPod(line: string): boolean {
+  const declaration = line.trimStart();
+  return (
+    declaration.startsWith("pod 'KrdpassAuth'") ||
+    declaration.startsWith('pod "KrdpassAuth"')
+  );
+}
+
+function isKrdpassAuthGitPod(line: string): boolean {
+  return (
+    isKrdpassAuthPod(line) &&
+    line.includes("https://github.com/ditkrg/krdpass-auth-sdk-ios.git")
+  );
+}
+
+function leadingWhitespace(line: string): string {
+  return line.slice(0, line.length - line.trimStart().length);
+}
+
+function joinLines(
+  lines: string[],
+  lineEnding: string,
+  hasTrailingLineEnding: boolean,
+): string {
+  const joined = lines.join(lineEnding);
+  return hasTrailingLineEnding ? `${joined}${lineEnding}` : joined;
+}
 
 const withAndroidConfig: ConfigPlugin = (config) => {
   return withAndroidManifest(config, (config) => {
     // 1. Set launchMode="singleTask" on MainActivity
     const mainActivity = AndroidConfig.Manifest.getMainActivityOrThrow(
-      config.modResults
+      config.modResults,
     );
     mainActivity.$["android:launchMode"] = "singleTask";
 
@@ -71,8 +154,8 @@ const withAndroidConfig: ConfigPlugin = (config) => {
     const packageIds = ["krd.pass", "krd.pass.dev"];
     const existingPackages = new Set(
       queries.flatMap((q: any) =>
-        (q.package || []).map((p: any) => p.$?.["android:name"])
-      )
+        (q.package || []).map((p: any) => p.$?.["android:name"]),
+      ),
     );
 
     packageIds.forEach((packageId) => {
@@ -87,4 +170,8 @@ const withAndroidConfig: ConfigPlugin = (config) => {
   });
 };
 
-export default withKrdPassAuth;
+export default createRunOncePlugin(
+  withKrdPassAuth,
+  packageName,
+  packageVersion,
+);

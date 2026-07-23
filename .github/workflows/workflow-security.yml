@@ -19,6 +19,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Audit workflow syntax
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.10
+
   zizmor:
     name: zizmor
     runs-on: ubuntu-latest

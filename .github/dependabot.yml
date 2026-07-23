@@ -10,8 +10,7 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
-    # expo-module-scripts currently depends on ts-jest 29, whose published
-    # peer range is TypeScript <7 and whose Expo test stack remains on Jest 29.
+    # ts-jest 29 remains on Jest 29 and its published TypeScript peer range is <7.
     ignore:
       - dependency-name: "typescript"
         versions: [">=7.0.0"]

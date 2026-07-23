@@ -1,49 +1,53 @@
-plugins {
-  id 'com.android.library'
-  id 'expo-module-gradle-plugin'
+buildscript {
+  // Only used when this library is opened directly. App builds provide their
+  // own AGP/Kotlin versions through the React Native Gradle plugin.
+  if (project == rootProject) {
+    repositories {
+      google()
+      mavenCentral()
+    }
+    dependencies {
+      classpath("com.android.tools.build:gradle:8.9.2")
+      classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20")
+    }
+  }
 }
 
-group = 'krdpass.auth.reactnative'
-version = '1.1.3'
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.facebook.react'
 
-// If you want to use the managed Android SDK versions from expo-modules-core, set this to true.
-// The Android SDK versions will be bumped from time to time in SDK releases and may introduce breaking changes in your module code.
-// Most of the time, you may like to manage the Android SDK versions yourself.
-def useManagedAndroidSdkVersions = false
-if (useManagedAndroidSdkVersions) {
-  useDefaultAndroidSdkVersions()
-} else {
-  buildscript {
-    // Simple helper that allows the root project to override versions declared by this library.
-    ext.safeExtGet = { prop, fallback ->
-      rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
-    }
-  }
-  project.android {
-    compileSdkVersion safeExtGet("compileSdkVersion", 36)
-    defaultConfig {
-      minSdkVersion safeExtGet("minSdkVersion", 24)
-      targetSdkVersion safeExtGet("targetSdkVersion", 36)
-    }
-  }
+group = 'krdpass.auth.reactnative'
+version = '1.2.0'
+
+def safeExtGet = { prop, fallback ->
+  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
 }
 
 android {
   namespace "krdpass.auth.reactnative"
+  compileSdkVersion safeExtGet("compileSdkVersion", 36)
   defaultConfig {
+    minSdkVersion safeExtGet("minSdkVersion", 24)
+    targetSdkVersion safeExtGet("targetSdkVersion", 36)
     versionCode 1
-    versionName "1.1.3"
+    versionName "1.2.0"
   }
   lintOptions {
     abortOnError false
   }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+  kotlinOptions {
+    jvmTarget = '17'
+  }
 }
 
 dependencies {
+  implementation "com.facebook.react:react-android"
   implementation "krd.pass:krdpass-auth:1.1.1"
-  // coroutines-core is used (module.scope.launch).
+  // Used by the bridge's bounded in-flight authentication work.
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0"
-  implementation "com.squareup.okhttp3:okhttp:5.4.0"
-  // 1.11 is the newest Activity line compatible with compileSdk 36 hosts.
-  implementation "androidx.activity:activity:1.11.0"
 }

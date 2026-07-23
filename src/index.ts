@@ -184,11 +184,11 @@ export async function signIn(
     let native: KrdpassTokenResult;
     try {
       native = (await KrdpassAuthReactNativeModule.signIn({
-        ...config,
         clientId: resolved.clientId,
         redirectUri: resolved.redirectUri,
         environment: resolved.environment,
-        ...(scopes ? { scopes } : {}),
+        ...(scopes !== undefined ? { scopes } : {}),
+        ...(config.timeout !== undefined ? { timeout: config.timeout } : {}),
       })) as KrdpassTokenResult;
     } catch (e) {
       // Both native modules REJECT the promise on every signIn failure
@@ -344,7 +344,10 @@ export async function verifyToken(
  */
 export async function generatePkcePair(): Promise<PkcePair> {
   const { codeVerifier, codeChallenge } =
-    await KrdpassAuthReactNativeModule.generatePkcePair();
+    (await KrdpassAuthReactNativeModule.generatePkcePair()) as {
+      codeVerifier: string;
+      codeChallenge: string;
+    };
   // KRDPASS always uses S256; surface it so callers don't hardcode the method.
   return { codeVerifier, codeChallenge, method: "S256" };
 }
