@@ -49,6 +49,7 @@ jobs:
     name: ${{ matrix.label }}
     needs: verify-package
     runs-on: ${{ matrix.runner }}
+    environment: native-consumer-${{ matrix.platform }}
     timeout-minutes: 75
     strategy:
       fail-fast: false
@@ -99,6 +100,26 @@ jobs:
           java-version: '17'
       - run: npm ci
       - run: npm run build
+      - name: Configure read-only access to the private iOS core
+        if: matrix.platform == 'ios'
+        shell: bash
+        env:
+          KRDPASS_IOS_DEPLOY_KEY: ${{ secrets.KRDPASS_IOS_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$KRDPASS_IOS_DEPLOY_KEY"
+          ssh_dir="$RUNNER_TEMP/krdpass-ios-ssh"
+          install -d -m 700 "$ssh_dir"
+          printf '%s\n' "$KRDPASS_IOS_DEPLOY_KEY" > "$ssh_dir/id_ed25519"
+          chmod 600 "$ssh_dir/id_ed25519"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+            https://api.github.com/meta |
+            jq -r '.ssh_keys[] | "github.com " + .' > "$ssh_dir/known_hosts"
+          git config --global core.sshCommand \
+            "ssh -i $ssh_dir/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$ssh_dir/known_hosts"
+          git config --global \
+            url."git@github.com:ditkrg/krdpass-auth-sdk-ios.git".insteadOf \
+            "https://github.com/ditkrg/krdpass-auth-sdk-ios.git"
       - name: Report the iOS runner toolchain
         if: matrix.platform == 'ios'
         run: |
