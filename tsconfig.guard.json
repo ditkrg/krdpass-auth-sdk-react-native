@@ -1,0 +1,13 @@
+// Type-checks src/__tests__/readme-samples.compile.ts, which the main tsconfig excludes so
+// it is never emitted into build/. That exclusion also means the default `tsc` run never
+// sees it, which left the guard dead. `npm run typecheck` runs both projects, so a README
+// sample that stops matching the public API now fails CI.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false
+  },
+  "include": ["./src/__tests__/readme-samples.compile.ts"],
+  "exclude": []
+}

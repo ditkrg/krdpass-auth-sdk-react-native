@@ -1,0 +1,134 @@
+name: CI
+
+# Build + test only. Consumers install via an npm git dependency; there is no publish step.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.13.0'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm test
+
+  consumer-verify:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    environment: native-consumer-${{ matrix.platform }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Bare React Native 0.86 (Android)
+            consumer: bare
+            platform: android
+            runner: ubuntu-24.04
+          - label: Expo SDK 57 (Android)
+            consumer: expo
+            platform: android
+            runner: ubuntu-24.04
+          - label: Bare React Native 0.86 (iOS)
+            consumer: bare
+            platform: ios
+            runner: macos-26
+          - label: Expo SDK 57 (iOS)
+            consumer: expo
+            platform: ios
+            runner: macos-26
+          - label: Bare React Native 0.81.6 legacy architecture (Android)
+            consumer: bare
+            platform: android
+            runner: ubuntu-24.04
+            react_native_version: 0.81.6
+            cli_version: 19.1.2
+            architecture: legacy
+          - label: Bare React Native 0.81.6 New Architecture (Android)
+            consumer: bare
+            platform: android
+            runner: ubuntu-24.04
+            react_native_version: 0.81.6
+            cli_version: 19.1.2
+            architecture: new
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.13.0'
+          cache: 'npm'
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      - run: npm run build
+      - name: Configure read-only Git access to the iOS core repository
+        if: >-
+          matrix.platform == 'ios' &&
+          (github.event_name != 'pull_request' ||
+          (github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'))
+        shell: bash
+        env:
+          KRDPASS_IOS_DEPLOY_KEY: ${{ secrets.KRDPASS_IOS_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "$KRDPASS_IOS_DEPLOY_KEY"
+          ssh_dir="$RUNNER_TEMP/krdpass-ios-ssh"
+          install -d -m 700 "$ssh_dir"
+          printf '%s\n' "$KRDPASS_IOS_DEPLOY_KEY" > "$ssh_dir/id_ed25519"
+          chmod 600 "$ssh_dir/id_ed25519"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+            --retry 3 --retry-all-errors \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/meta |
+            jq -r '.ssh_keys[] | "github.com " + .' > "$ssh_dir/known_hosts"
+          git config --global core.sshCommand \
+            "ssh -i $ssh_dir/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$ssh_dir/known_hosts"
+          git config --global \
+            url."git@github.com:ditkrg/krdpass-auth-sdk-ios.git".insteadOf \
+            "https://github.com/ditkrg/krdpass-auth-sdk-ios.git"
+      - name: Report the iOS runner toolchain
+        if: matrix.platform == 'ios'
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Build the packed SDK in a clean ${{ matrix.consumer }} consumer
+        if: >-
+          matrix.platform != 'ios' ||
+          github.event_name != 'pull_request' ||
+          (github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]')
+        env:
+          CONSUMER: ${{ matrix.consumer }}
+          PLATFORM: ${{ matrix.platform }}
+          BARE_REACT_NATIVE_VERSION: ${{ matrix.react_native_version }}
+          REACT_NATIVE_CLI_VERSION: ${{ matrix.cli_version }}
+          BARE_ARCHITECTURE: ${{ matrix.architecture }}
+        run: node scripts/verify-consumer.mjs --kind "$CONSUMER" --platform "$PLATFORM"
