@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0] - 2026-08-07
+
+- `KrdpassUserInfo` gained `upns`, the citizen's historical UPNs as a string array. Empty when
+  the claim is absent.
+- iOS cancellations now carry the provider's own description on `rawDescription`, matching
+  Android. Previously the iOS bridge discarded it and always reported the canonical cancelled
+  message.
+
 ## [1.3.0] - 2026-07-29
 
 Initial public release.

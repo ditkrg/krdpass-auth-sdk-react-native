@@ -5,10 +5,9 @@
 // means the default `tsc` run never sees it. tsconfig.guard.json is what compiles this
 // file, and `npm run typecheck` runs both projects.
 //
-// Deliberately not named *.test.ts. Jest would try to execute it, and importing the
-// package root pulls in react-native, which jest does not transform. Nothing here needs
-// to run: compiling it is the whole point. It lives under __tests__ so it stays out of
-// the published tarball.
+// Not named *.test.ts: jest would try to execute it, and importing the package root pulls
+// in react-native, which jest does not transform. Nothing here needs to run, only compile.
+// It lives under __tests__ so it stays out of the published tarball.
 import {
   initialize,
   signIn,

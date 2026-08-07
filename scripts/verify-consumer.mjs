@@ -17,7 +17,7 @@ const CREATE_EXPO_APP_VERSION = "4.0.0";
 const EXPO_MANAGED_TEMPLATE = "expo-template-blank@57.0.0";
 const PACKAGE_NAME = "krdpass-auth-react-native";
 const KRDPASS_AUTH_POD =
-  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.3.0'";
+  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.4.0'";
 
 const sdkRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -158,7 +158,7 @@ function verifyExpoPlugin(consumerRoot) {
     fail("Expo config plugin did not apply the expected Android manifest changes.");
   }
   const podfile = readFileSync(join(consumerRoot, "ios", "Podfile"), "utf8");
-  if (!podfile.includes("pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.3.0'")) {
+  if (!podfile.includes("pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.4.0'")) {
     fail("Expo config plugin did not add the KrdpassAuth pod source.");
   }
 }

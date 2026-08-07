@@ -40,7 +40,7 @@ Protocol reference:
 ## Install
 
 ```bash
-npm install github:ditkrg/krdpass-auth-sdk-react-native#v1.3.0
+npm install github:ditkrg/krdpass-auth-sdk-react-native#v1.4.0
 npm install react-native-get-random-values@^2.0.0
 ```
 
@@ -91,7 +91,7 @@ for a transitive dependency of a library podspec, so this one declaration has to
 host app:
 
 ```ruby
-pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.3.0'
+pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.4.0'
 ```
 
 **4. Enable Associated Domains** for your redirect host, and forward Universal Links from
@@ -125,6 +125,8 @@ import {
   initialize,
   signIn,
   authenticate,
+  generatePkcePair,
+  generateState,
   getUserInfo,
   KrdpassAuthError,
   isAuthResultSuccess,
@@ -144,6 +146,8 @@ initialize({
 **2a. Client-only sign-in.** The SDK runs PKCE, PAR and the token exchange and hands you
 tokens. Simplest to integrate; your client is public, so prefer 2b in production. `signIn`
 resolves with tokens and throws on cancel or failure, identically on both platforms.
+Client-only sign-in needs a public client, which is not currently issued for any
+integration. Use the server-mediated flow (2b).
 
 ```ts
 try {
@@ -153,8 +157,7 @@ try {
   if (e instanceof KrdpassAuthError) {
     switch (e.code) {
       case 'cancelled':
-      case 'access_denied':
-        break; // usually no UI needed
+        break; // usually no UI needed; both cores fold every decline into this one code
       case 'timeout':
         break; // offer retry
       case 'busy':
@@ -170,15 +173,25 @@ try {
 }
 ```
 
-**2b. Server-mediated sign-in.** Your backend runs PAR and the token exchange; the SDK only
-launches KRDPASS and returns the authorization code. Pass back the exact `state` your
-backend generated, or the SDK fails closed with `invalid_request`.
+**2b. Server-mediated sign-in.** Your backend runs PAR and the token exchange; the SDK
+launches KRDPASS and returns the authorization code. PKCE and `state` are yours: generate
+both in the app, send only the `codeChallenge` and the `state` to your backend, and hold the
+`codeVerifier` until the exchange. Pass that same `state` back into `authenticate`, or the
+SDK fails closed with `invalid_request`.
 
 ```ts
-const par = await fetchParFromYourBackend(); // { requestUri, state }
-const result = await authenticate({ requestUri: par.requestUri, state: par.state });
+const pkce = await generatePkcePair();
+const state = generateState();
+
+// Your backend runs the PAR with pkce.codeChallenge and state, and returns the request_uri.
+const par = await fetchParFromYourBackend({
+  codeChallenge: pkce.codeChallenge,
+  state,
+}); // { requestUri }
+
+const result = await authenticate({ requestUri: par.requestUri, state });
 if (isAuthResultSuccess(result)) {
-  // send result.code + result.state to your backend
+  // send result.code + pkce.codeVerifier + result.state to your backend
 } else if (isAuthResultCancelled(result)) {
   // usually no UI needed
 } else if (isAuthResultTimeout(result)) {
@@ -251,9 +264,15 @@ Redirect validation happens in the native cores; this package does not reimpleme
 result is accepted only when it returns to your exact registered redirect endpoint: scheme,
 host, effective port, encoded path and any fixed query entries must all match.
 
-`verifyToken` checks an ID token's signature against JWKS, plus audience and expiry.
-`decodeTokenUnverified` does not verify anything and must never drive an authorization
-decision.
+`verifyToken` checks an ID token's signature against JWKS, and pins the issuer to the
+configured environment's authorization server and the audience to your `clientId`, plus the
+expiry. The `aud` check is exact, not containment: the token's `aud` must be exactly your
+`clientId`, so an ID token listing any additional audience is rejected. Both are pinned on
+Android and on iOS: a token signed by a different issuer whose key happens to be in the
+fetched JWKS is rejected, and so is a token minted for a different client. The one check this call cannot make is nonce binding, because a nonce only exists
+inside a flow that generated one; the client-only `signIn` flow runs everything above plus
+that nonce check. `decodeTokenUnverified` does not verify anything and must never drive an
+authorization decision.
 
 This SDK has no logging hook, unlike the Android, iOS and Flutter SDKs.
 

@@ -25,6 +25,7 @@ import krd.pass.auth.KrdpassTokenResult
 import krd.pass.auth.PkceGenerator
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
@@ -240,7 +241,7 @@ class KrdpassAuthReactNativeModule(
       try {
         promise.resolve(nativeMap(KrdpassAuth.getUserInfo(clientId, environment, accessToken).raw))
       } catch (e: Exception) {
-        promise.reject("user_info_failed", e.message, e)
+        promise.reject(sdkErrorCode(e) ?: "user_info_failed", e.message, e)
       }
     }
   }
@@ -260,7 +261,7 @@ class KrdpassAuthReactNativeModule(
         promise.resolve(tokensToMap(
           KrdpassAuth.refreshTokens(clientId, environment, refreshToken, config["scope"] as? String)))
       } catch (e: Exception) {
-        promise.reject("refresh_failed", e.message, e)
+        promise.reject(sdkErrorCode(e) ?: "refresh_failed", e.message, e)
       }
     }
   }
@@ -280,7 +281,7 @@ class KrdpassAuthReactNativeModule(
         KrdpassAuth.revokeToken(clientId, environment, token, config["tokenTypeHint"] as? String)
         promise.resolve(null)
       } catch (e: Exception) {
-        promise.reject("revoke_failed", e.message, e)
+        promise.reject(sdkErrorCode(e) ?: "revoke_failed", e.message, e)
       }
     }
   }
@@ -377,27 +378,35 @@ class KrdpassAuthReactNativeModule(
   }
 
   /**
-   * Forward the core's own verifyToken classification (`invalid_id_token` for signature/claims,
-   * `network_error` for an unfetchable JWKS) and fall back to `verification_failed` only when it
-   * has none. Flattening everything to `verification_failed` hides the retryable case.
+   * The core SDK's own wire code for [e] (`network_error`, `timeout`, a structured server code),
+   * or null when it carries none. Every rejection path appends its per-call fallback with `?:`,
+   * so a transient failure keeps its retryable code instead of flattening to the permanent
+   * per-call one (refresh_failed, revoke_failed, user_info_failed, ...), which the docs tell
+   * apps not to retry.
    *
-   * Separate from [krdpassErrorCode]: that one falls back to `authentication_failed`, the signIn
-   * fallback, not this call's.
+   * IOException is here because the core's CasException translation only covers CAS responses:
+   * a transport-level failure (connection down, DNS, socket timeout) escapes OkHttp as a raw
+   * IOException, and that is exactly the retryable case the taxonomy exists for.
    */
-  private fun verifyErrorCode(e: Throwable): String = when (e) {
-    is KrdpassError.NetworkError -> "network_error"
-    is KrdpassError.AuthenticationFailed -> e.code ?: "verification_failed"
-    else -> "verification_failed"
-  }
-
-  private fun krdpassErrorCode(e: Throwable): String = when (e) {
+  private fun sdkErrorCode(e: Throwable): String? = when (e) {
     is KrdpassError.UserCancelled -> "cancelled"
     is KrdpassError.Timeout -> "timeout"
     is KrdpassError.Busy -> "busy"
     is KrdpassError.NetworkError -> "network_error"
-    is KrdpassError.AuthenticationFailed -> e.code ?: "authentication_failed"
-    else -> "authentication_failed"
+    is KrdpassError.AuthenticationFailed -> e.code
+    is KrdpassError.ConfigurationError -> "invalid_request"
+    is IOException -> "network_error"
+    else -> null
   }
+
+  /**
+   * Forward the core's own verifyToken classification (`invalid_id_token` for signature/claims,
+   * `network_error` for an unfetchable JWKS) and fall back to `verification_failed` only when it
+   * has none. Flattening everything to `verification_failed` hides the retryable case.
+   */
+  private fun verifyErrorCode(e: Throwable): String = sdkErrorCode(e) ?: "verification_failed"
+
+  private fun krdpassErrorCode(e: Throwable): String = sdkErrorCode(e) ?: "authentication_failed"
 
   private fun tokensToMap(tokens: KrdpassTokenResult) = nativeMap(
     mapOf(

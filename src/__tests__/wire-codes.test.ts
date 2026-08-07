@@ -13,10 +13,9 @@ const TYPES = source("src/KrdpassAuthReactNative.types.ts");
 /**
  * The members of the AuthErrorCode union, read off its declaration.
  *
- * Read from source rather than restated here on purpose: a hand-kept copy is a second source
- * of truth that drifts. The union is applied to `AuthResultError.error` and
- * `KrdpassAuthError.code`, so what this list really describes is what a caller can branch on
- * with type support.
+ * Read from source rather than restated here, since a hand-kept copy drifts. The union is
+ * applied to `AuthResultError.error` and `KrdpassAuthError.code`, so this list describes what
+ * a caller can branch on with type support.
  */
 const unionMembers = (): string[] => {
   const start = TYPES.indexOf("export type AuthErrorCode =");
@@ -122,6 +121,24 @@ describe.each([
       : 'reject("verification_failed"';
     expect(bridge).not.toContain(flattened);
   });
+
+  // The token ops (getUserInfo / refreshTokens / revokeToken) used to reject with their per-call
+  // permanent code unconditionally, so a transient network_error or timeout from the SDK reached
+  // JS as refresh_failed / revoke_failed / user_info_failed, which the README documents as not
+  // retryable, and apps logged users out on a flaky connection. The bridges now forward the
+  // SDK's own code and use the per-call code only when the error carries none, the same shape
+  // callNative documents (`e.code ?? fallbackCode`) and the verify path already had.
+  it.each(["user_info_failed", "refresh_failed", "revoke_failed"])(
+    "uses %s as the codeless fallback, not a hardcoded rejection",
+    (code) => {
+      const hardcoded = isKotlin
+        ? `promise.reject("${code}"`
+        : `reject("${code}"`;
+      expect(bridge).not.toContain(hardcoded);
+      const fallback = isKotlin ? `?: "${code}"` : `?? "${code}"`;
+      expect(bridge).toContain(fallback);
+    },
+  );
 
   it.each([
     "user_info_failed",

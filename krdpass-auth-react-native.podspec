@@ -21,10 +21,10 @@ Pod::Spec.new do |s|
   #
   #   pod 'KrdpassAuth',
   #     git: 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git',
-  #     tag: 'v1.3.0'
+  #     tag: 'v1.4.0'
   #
   # Pinned exactly so an app cannot silently drift onto a different core.
-  s.dependency 'KrdpassAuth', '1.3.0'
+  s.dependency 'KrdpassAuth', '1.4.0'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',

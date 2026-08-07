@@ -2,7 +2,7 @@ import * as pluginEntry from "../index";
 import { ensureKrdpassAuthPodSource } from "../podfile";
 
 const pod =
-  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.3.0'";
+  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.4.0'";
 
 const expoPodfile = `platform :ios, '15.1'
 

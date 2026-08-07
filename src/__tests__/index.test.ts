@@ -165,7 +165,7 @@ describe("canonical messages parity", () => {
     expect(messageForErrorCode("some_server_code")).toBeUndefined();
   });
 
-  // Locks the deliberate non-mapping of invalid_id_token. The cores emit it with two
+  // Locks the non-mapping of invalid_id_token. The cores emit it with two
   // different messages, one of them dynamic ("ID token validation failed: <cause>"), so a
   // canonical string here would report a signature failure as a missing id_token and throw
   // away the only diagnostic. Undefined is correct: the caller falls back to the native text.
@@ -533,10 +533,64 @@ describe("getUserInfo maps raw claims to typed KrdpassUserInfo", () => {
     expect(info.raw.custom_claim).toBe("x");
   });
 
+  it("trims each citizenFullName part and drops the blank ones", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({
+      sub: "user-1",
+      citizen_first: " Ali ",
+      citizen_second: "  Aram  ",
+      citizen_third: "   ",
+      citizen_surname: " Karim",
+    });
+    const info = await getUserInfo({ accessToken: "at" });
+    // A padded middle part is where the stray double space used to show up.
+    expect(info.citizenFullName).toBe("Ali Aram Karim");
+    expect(info.citizenFullName).not.toContain("  ");
+    // The individual claims keep whatever the server sent; only the joined
+    // display string is normalised.
+    expect(info.citizenFirst).toBe(" Ali ");
+  });
+
+  it("leaves citizenFullName undefined when every part is blank", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({
+      sub: "user-1",
+      citizen_first: " ",
+      citizen_surname: "",
+    });
+    const info = await getUserInfo({ accessToken: "at" });
+    expect(info.citizenFullName).toBeUndefined();
+  });
+
   it("throws when the response has no sub", async () => {
     const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
     native.mockResolvedValue({ name: "no sub" });
     await expect(getUserInfo({ accessToken: "at" })).rejects.toThrow(/sub/i);
+  });
+
+  it("maps upns when present as an array of strings", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({
+      sub: "user-1",
+      upn: "current@krd",
+      upns: ["old1@krd", "old2@krd"],
+    });
+    const info = await getUserInfo({ accessToken: "at" });
+    expect(info.upns).toEqual(["old1@krd", "old2@krd"]);
+  });
+
+  it("defaults upns to an empty array when absent", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({ sub: "user-1" });
+    const info = await getUserInfo({ accessToken: "at" });
+    expect(info.upns).toEqual([]);
+  });
+
+  it("falls back to an empty array when upns is present but not an array of strings", async () => {
+    const native = KrdpassAuthReactNativeModule.getUserInfo as jest.Mock;
+    native.mockResolvedValue({ sub: "user-1", upns: "not-an-array" });
+    const info = await getUserInfo({ accessToken: "at" });
+    expect(info.upns).toEqual([]);
   });
 });
 

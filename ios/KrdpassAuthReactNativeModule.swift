@@ -82,7 +82,7 @@ public final class KrdpassAuthReactNativeModule: NSObject, @unchecked Sendable {
         // (resolve takes Any, so it would compile and deliver garbage to JS).
         resolve(try await auth.getUserInfo(accessToken: token).rawJsonObject)
       } catch {
-        reject("user_info_failed", error.localizedDescription, error)
+        reject(Self.sdkErrorCode(error) ?? "user_info_failed", error.localizedDescription, error)
       }
     }
   }
@@ -107,7 +107,7 @@ public final class KrdpassAuthReactNativeModule: NSObject, @unchecked Sendable {
         let auth = KrdpassAuth(config: KrdpassConfig(clientId: clientId, redirectUri: "", environment: environment))
         resolve(Self.tokensToMap(try await auth.refreshTokens(refreshToken: refreshToken, scope: config["scope"] as? String)))
       } catch {
-        reject("refresh_failed", error.localizedDescription, error)
+        reject(Self.sdkErrorCode(error) ?? "refresh_failed", error.localizedDescription, error)
       }
     }
   }
@@ -133,7 +133,7 @@ public final class KrdpassAuthReactNativeModule: NSObject, @unchecked Sendable {
         try await auth.revokeToken(token: token, tokenTypeHint: config["tokenTypeHint"] as? String)
         resolve(nil)
       } catch {
-        reject("revoke_failed", error.localizedDescription, error)
+        reject(Self.sdkErrorCode(error) ?? "revoke_failed", error.localizedDescription, error)
       }
     }
   }
@@ -221,8 +221,8 @@ public final class KrdpassAuthReactNativeModule: NSObject, @unchecked Sendable {
       switch result {
       case .success(let response):
         resolve(["code": response.code, "state": response.state as Any])
-      case .cancelled:
-        resolve(["error": "cancelled", "error_description": AuthError.cancelled.message])
+      case .cancelled(let rawDescription):
+        resolve(["error": "cancelled", "error_description": rawDescription ?? AuthError.cancelled.message])
       case .timeout:
         resolve(["error": "timeout", "error_description": AuthError.timeout.message])
       case .busy:
@@ -281,11 +281,22 @@ public final class KrdpassAuthReactNativeModule: NSObject, @unchecked Sendable {
     }
   }
 
+  /// The core SDK's own wire code for the error (`network_error`, `timeout`, a structured server
+  /// code), or nil when it carries none. Every rejection path appends its per-call fallback with
+  /// `??`, so a transient failure keeps its retryable code instead of flattening to the permanent
+  /// per-call one (refresh_failed, revoke_failed, user_info_failed, ...), which the docs tell
+  /// apps not to retry. The token entry points only throw KrdpassError (the core's
+  /// translatingCasErrors guarantees it), so nil here means "no more specific code", not an
+  /// untranslated error type.
+  private static func sdkErrorCode(_ error: Error) -> String? {
+    (error as? KrdpassError)?.code
+  }
+
   /// Forward the core's own verifyToken classification (`invalid_id_token` for signature/claims,
   /// `network_error` for an unfetchable JWKS); `verification_failed` is only the fallback when it
   /// has none. Flattening everything to `verification_failed` hides the retryable case.
   private static func verifyErrorCode(_ error: Error) -> String {
-    (error as? KrdpassError)?.code ?? "verification_failed"
+    sdkErrorCode(error) ?? "verification_failed"
   }
 
   private static func tokensToMap(_ tokens: KrdpassTokenResult) -> [String: Any?] {

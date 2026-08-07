@@ -71,10 +71,10 @@ export function messageForErrorCode(code: string): string | undefined {
     // ID token replay. Not a cancellation: a security failure, one fixed message on both cores.
     case "nonce_mismatch":
       return KrdpassMessages.NONCE_MISMATCH;
-    // `invalid_id_token` is DELIBERATELY absent: the cores emit it with two different texts, one
-    // of them dynamic ("did not include an id_token" vs "ID token validation failed: <cause>"),
-    // so a canonical string here would report a signature failure as a missing token and destroy
-    // the only diagnostic. It falls through to undefined, keeping the native/server description.
+    // `invalid_id_token` is absent: the cores emit it with two different texts, one dynamic
+    // ("did not include an id_token" vs "ID token validation failed: <cause>"), so a canonical
+    // string would report a signature failure as a missing token and lose the only diagnostic.
+    // It falls through to undefined and keeps the native/server description.
     case "provider_not_installed":
       return KrdpassMessages.PROVIDER_NOT_INSTALLED;
     case "no_code":
@@ -197,6 +197,11 @@ export interface KrdpassUserInfo {
   birthdate?: string;
   sexAtBirth?: string;
   upn?: string;
+  /**
+   * Historical UPNs (previous values of `upn`). Must be stored; must never be
+   * displayed. Empty array when the claim is absent.
+   */
+  upns: string[];
   did?: string;
   /** Full citizen name assembled from the known parts, if any. */
   citizenFullName?: string;

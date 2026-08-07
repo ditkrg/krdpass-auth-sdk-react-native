@@ -4,8 +4,10 @@ name: CI
 on:
   push:
     branches: [main]
+  # Any target branch: the maintainer convention is to open PRs against dev, and a
+  # main-only filter means those PRs never run a build or a test.
   pull_request:
-    branches: [main]
+    branches: ["**"]
 
 permissions:
   contents: read

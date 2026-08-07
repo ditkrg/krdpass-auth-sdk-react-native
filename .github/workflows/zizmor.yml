@@ -13,7 +13,6 @@ jobs:
     name: Run zizmor
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
       contents: read
       actions: read
     steps:
@@ -24,3 +23,12 @@ jobs:
 
       - name: Run zizmor
         uses: zizmorcore/zizmor-action@6fc4b006235f201fdab3722e17240ab420d580e5 # v0.6.1
+        with:
+          # Report everything from low severity upwards.
+          min-severity: low
+          # advanced-security uploads SARIF, and in SARIF mode zizmor always exits 0, so
+          # findings never fail the job. Annotations mode keeps zizmor's exit code, which
+          # is what turns this workflow from advisory into a real gate. The two options
+          # are mutually exclusive in the action.
+          advanced-security: false
+          annotations: true

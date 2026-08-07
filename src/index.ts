@@ -285,6 +285,15 @@ const claimString = (value: unknown): string | undefined =>
   typeof value === "string" ? value : undefined;
 
 /**
+ * Server-controlled claims are `unknown`: keep the claim only when it really is
+ * an array of strings, otherwise fall back to empty rather than throwing.
+ */
+const claimStringArray = (value: unknown): string[] =>
+  Array.isArray(value) && value.every((v) => typeof v === "string")
+    ? value
+    : [];
+
+/**
  * Map the raw UserInfo claims (snake_case) into the typed {@link KrdpassUserInfo}
  * shape used by the Android/Flutter SDKs, preserving the full claim set on `raw`.
  */
@@ -293,12 +302,17 @@ function mapUserInfo(raw: Record<string, unknown>): KrdpassUserInfo {
   if (!sub) {
     throw new Error("Invalid user info response: missing or empty sub field");
   }
+  // Each part is trimmed before joining, so " Aram " contributes "Aram" and a
+  // whitespace-only claim contributes nothing rather than a stray space in the
+  // joined name. Matches the Android, iOS and Flutter SDKs.
   const nameParts = [
     raw.citizen_first,
     raw.citizen_second,
     raw.citizen_third,
     raw.citizen_surname,
-  ].filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  ]
+    .map((p) => (typeof p === "string" ? p.trim() : ""))
+    .filter((p) => p.length > 0);
   return {
     sub,
     name: claimString(raw.name),
@@ -315,6 +329,7 @@ function mapUserInfo(raw: Record<string, unknown>): KrdpassUserInfo {
     birthdate: claimString(raw.birthdate),
     sexAtBirth: claimString(raw.sex_at_birth),
     upn: claimString(raw.upn),
+    upns: claimStringArray(raw.upns),
     did: claimString(raw.did),
     citizenFullName: nameParts.length ? nameParts.join(" ") : undefined,
     raw,
@@ -366,13 +381,19 @@ export async function revokeToken(config: RevokeTokenConfig): Promise<void> {
  *
  * Fetches the public keys from the JWKS endpoint and validates:
  * - RS256 signature
+ * - Issuer (`iss` must equal the configured environment's authorization server)
  * - Audience (`aud` must equal your clientId)
  * - Token expiration (exp claim)
  * - Token not-before (nbf claim)
  * - Token issued-at (iat claim)
  *
- * Note: this convenience verifier does not pin the issuer. The client-only
- * {@link signIn} flow performs the full issuer + nonce-bound validation.
+ * The issuer and the audience are both pinned, on Android and on iOS. A token
+ * signed by a different issuer whose key happens to be in the fetched JWKS is
+ * rejected, and so is a token minted for a different client.
+ *
+ * The one check this call cannot make is nonce binding, because a nonce only
+ * exists inside a flow that generated one. The client-only {@link signIn} flow
+ * runs everything above plus that nonce check on the token it receives.
  *
  * @param config - Configuration including idToken to verify and optional
  *   clockSkew (allowed skew in seconds for exp/nbf/iat; defaults to 60)

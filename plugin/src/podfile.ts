@@ -5,7 +5,7 @@
  */
 // Not on the CocoaPods trunk: the host Podfile needs this git source, tag matching the core.
 const KRDPASS_AUTH_POD =
-  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.3.0'";
+  "pod 'KrdpassAuth', :git => 'https://github.com/ditkrg/krdpass-auth-sdk-ios.git', :tag => 'v1.4.0'";
 const POD_BLOCK_START =
   "# @generated begin krdpass-auth-react-native - expo prebuild (DO NOT MODIFY)";
 const POD_BLOCK_END =
