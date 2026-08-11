@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    # ts-jest 29 remains on Jest 29 and its published TypeScript peer range is <7.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
+      - dependency-name: "jest"
+        versions: [">=30.0.0"]
+      - dependency-name: "@types/jest"
+        versions: [">=30.0.0"]
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7

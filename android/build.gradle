@@ -1,0 +1,50 @@
+// No buildscript block. This directory ships no settings.gradle and no Gradle wrapper, so
+// it can never be a root project, and the AGP/Kotlin classpath declared here would never be
+// applied. The consuming app supplies both through the React Native Gradle plugin, which is
+// also what decides the Kotlin version this module is compiled with.
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.facebook.react'
+
+group = 'krdpass.auth.reactnative'
+version = '1.5.0'
+
+def safeExtGet = { prop, fallback ->
+  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
+android {
+  namespace = "krdpass.auth.reactnative"
+  compileSdk = safeExtGet("compileSdkVersion", 36)
+  defaultConfig {
+    minSdk = safeExtGet("minSdkVersion", 24)
+    targetSdk = safeExtGet("targetSdkVersion", 36)
+    versionCode = 1
+    versionName = "1.5.0"
+  }
+  lint {
+    abortOnError = false
+  }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+  kotlinOptions {
+    jvmTarget = '17'
+  }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  implementation "krd.pass:krdpass-auth:1.5.0"
+  // Imported directly by the bridge (Dispatchers.Main), so declared directly. Gradle resolves
+  // a conflict with the transitive copy by taking the highest version, not this one.
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
+
+  // Plain JVM tests for BridgeMapping (src/test). No Robolectric: the mapping layer touches no
+  // Android framework type. org.json is a real dependency here because the android.jar the unit
+  // test task compiles against only stubs it, and the sanitizer walks JSONObject/JSONArray.
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.json:json:20250107"
+}

@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Merged into the consumer's manifest by AGP, so Android 11+ package visibility never
+       silently hides the KRDPASS app. -->
+  <queries>
+    <package android:name="krd.pass" />
+    <package android:name="krd.pass.dev" />
+  </queries>
+</manifest>
