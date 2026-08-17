@@ -46,5 +46,5 @@ dependencies {
   // Android framework type. org.json is a real dependency here because the android.jar the unit
   // test task compiles against only stubs it, and the sanitizer walks JSONObject/JSONArray.
   testImplementation "junit:junit:4.13.2"
-  testImplementation "org.json:json:20250107"
+  testImplementation "org.json:json:20260719"
 }
