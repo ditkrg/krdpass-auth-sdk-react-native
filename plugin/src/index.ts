@@ -22,7 +22,6 @@ const withKrdPassAuth: ConfigPlugin = (config) => {
   return config;
 };
 
-/** Inject the KrdpassAuth pod's git source into the prebuild-generated Podfile. */
 const withKrdpassPodSource: ConfigPlugin = (config) => {
   return withPodfile(config, (config) => {
     config.modResults.contents = ensureKrdpassAuthPodSource(

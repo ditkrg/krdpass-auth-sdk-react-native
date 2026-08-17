@@ -6,7 +6,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 
-/** Autolinking entry point for the Codegen TurboModule. */
 class KrdpassAuthReactNativePackage : BaseReactPackage() {
   override fun getModule(
     name: String,

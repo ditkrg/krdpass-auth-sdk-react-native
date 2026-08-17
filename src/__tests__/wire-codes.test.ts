@@ -132,7 +132,6 @@ describe.each([
       ? 'launchSettling(promise, "verification_failed")'
       : 'fallback: "verification_failed"';
     expect(bridge).toContain(forwarder);
-    // The flattening shape must not come back.
     const flattened = isKotlin
       ? 'promise.reject("verification_failed"'
       : 'reject("verification_failed"';

@@ -49,7 +49,6 @@ internal object BridgeMapping {
     if (description == null) mapOf("error" to error)
     else mapOf("error" to error, "error_description" to description)
 
-  /** The JS object for a token result, shared by the signIn and refreshTokens paths. */
   fun tokenFields(tokens: KrdpassTokenResult): Map<String, Any?> = mapOf(
     "accessToken" to tokens.accessToken,
     "idToken" to tokens.idToken,
@@ -62,7 +61,6 @@ internal object BridgeMapping {
   /**
    * The environment for a JS `environment` option, or null when it is not one of the two names
    * the JS layer's own validation accepts (any case, trimmed). Absent or null means production.
-   * Kept in step with the iOS bridge's parseEnvironment.
    */
   fun environment(value: Any?): KrdpassEnvironment? {
     if (value == null || value === JSONObject.NULL) return KrdpassEnvironment.Production

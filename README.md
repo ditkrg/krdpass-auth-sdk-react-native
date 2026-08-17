@@ -48,15 +48,7 @@ npm install react-native-get-random-values@^2.0.0
 that uses it: PKCE comes from the native cores. It is loaded when you call `generateState()`
 rather than at import, so an app that never calls it is never handed a patched
 `globalThis.crypto`. Installing from GitHub runs this package's `prepare` build, so lifecycle
-scripts must be enabled.
-
-If you never call `generateState()` you can skip it, with one caveat about bundling. The
-`require` sits inside a `try`/`catch`, and the default React Native and Expo Metro configs set
-`transformer.allowOptionalDependencies: true`, which is exactly what makes an unresolvable
-`require` in that position a caught runtime error instead of a bundling failure. Metro's own
-default for that option is `false`, so a hand-rolled `metro.config.js` that does not build on
-`@react-native/metro-config` or `expo/metro-config` will fail the bundle unless the package is
-installed. That is why it is declared as an optional peer dependency rather than left undeclared.
+scripts must be enabled. It is an optional peer; install it if you call `generateState()`.
 
 The Android bridge depends on `krd.pass:krdpass-auth`, which resolves from Maven Central
 through your app's existing repositories. No extra Gradle configuration.
@@ -123,20 +115,7 @@ All three are validated here and `initialize` throws on a bad one, so a value th
 from an environment variable through a cast fails at startup rather than mid-flow.
 
 ```ts
-import {
-  initialize,
-  signIn,
-  authenticate,
-  generatePkcePair,
-  generateState,
-  getUserInfo,
-  KrdpassAuthError,
-  isAuthResultSuccess,
-  isAuthResultCancelled,
-  isAuthResultTimeout,
-  isAuthResultBusy,
-  isAuthResultProviderNotInstalled,
-} from 'krdpass-auth-react-native';
+import { initialize } from 'krdpass-auth-react-native';
 
 initialize({
   clientId: 'your-client-id',
@@ -145,35 +124,7 @@ initialize({
 });
 ```
 
-**2a. Client-only sign-in.** The SDK runs PKCE, PAR and the token exchange and hands you
-tokens. Simplest to integrate; your client is public, so prefer 2b in production. `signIn`
-resolves with tokens and throws on cancel or failure, identically on both platforms.
-Client-only sign-in needs a public client, which is not currently issued for any
-integration. Use the server-mediated flow (2b).
-
-```ts
-try {
-  const tokens = await signIn({ scopes: ['openid', 'profile'] });
-  const user = await getUserInfo({ accessToken: tokens.accessToken });
-} catch (e) {
-  if (e instanceof KrdpassAuthError) {
-    switch (e.code) {
-      case 'cancelled':
-        break; // usually no UI needed; both cores fold every decline into this one code
-      case 'timeout':
-        break; // offer retry
-      case 'busy':
-        break; // ignore or queue
-      case 'state_mismatch':
-        break; // fail closed and restart
-      case 'provider_not_installed':
-        break; // e.installUrl is set, open it
-      default:
-        console.error(e.code, e.errorDescription);
-    }
-  }
-}
-```
+**2a. Client-only sign-in.** A public client is not issued; use the server-mediated flow (2b).
 
 **2b. Server-mediated sign-in.** Your backend runs PAR and the token exchange; the SDK
 launches KRDPASS and returns the authorization code. PKCE and `state` are yours: generate
@@ -182,6 +133,17 @@ both in the app, send only the `codeChallenge` and the `state` to your backend, 
 SDK fails closed with `invalid_request`.
 
 ```ts
+import {
+  generatePkcePair,
+  generateState,
+  authenticate,
+  isAuthResultSuccess,
+  isAuthResultCancelled,
+  isAuthResultTimeout,
+  isAuthResultBusy,
+  isAuthResultProviderNotInstalled,
+} from 'krdpass-auth-react-native';
+
 const pkce = await generatePkcePair();
 const state = generateState();
 
@@ -223,8 +185,10 @@ not a success.
 
 ```ts
 import {
+  signIn,
   KrdpassScopes,
   cancelPendingAuthentication,
+  authenticate,
   isAuthResultError,
 } from 'krdpass-auth-react-native';
 
@@ -273,7 +237,7 @@ Both surface the same wire codes:
 | `issuer_mismatch` | The response carried an `iss` that is not the environment's authorization server (RFC 9207 mix-up) | Fail closed and restart |
 | `nonce_mismatch` | The id_token carried a `nonce` that is not the one this client sent (possible token replay) | Fail closed and restart |
 | `invalid_id_token` | The id_token failed verification: signature, `iss`, `aud`, `exp`, or it was absent from the token response. Deliberately has no canonical message, so read `errorDescription` for the reason | Log and report |
-| `invalid_redirect` | Redirect URI does not match the exact configured endpoint (scheme, host, port, path, and fixed query) | Check onboarding config |
+| `invalid_redirect` | Redirect URI does not match the exact configured endpoint (scheme, host, port, path, and fixed query). Android only: the iOS core leaves a non-matching callback unhandled, so on iOS the same misconfiguration surfaces as `cancelled` once the foreground watcher sees the app return without a result | Check onboarding config |
 | `invalid_request` | Malformed or blank request parameters | Fix the integration |
 | `request_expired` | The request_uri expired inside KRDPASS (NOT a cancellation) | Restart with a fresh PAR request |
 | `launch_failed` | The KRDPASS app could not be launched | Retry or check installation |
@@ -302,9 +266,8 @@ configured environment's authorization server and the audience to your `clientId
 expiry. The `aud` check is exact, not containment: the token's `aud` must be exactly your
 `clientId`, so an ID token listing any additional audience is rejected. Both are pinned on
 Android and on iOS: a token signed by a different issuer whose key happens to be in the
-fetched JWKS is rejected, and so is a token minted for a different client. The one check this call cannot make is nonce binding, because a nonce only exists
-inside a flow that generated one; the client-only `signIn` flow runs everything above plus
-that nonce check. `decodeTokenUnverified` does not verify anything and must never drive an
+fetched JWKS is rejected, and so is a token minted for a different client.
+`decodeTokenUnverified` does not verify anything and must never drive an
 authorization decision.
 
 This SDK has no logging hook, unlike the Android, iOS and Flutter SDKs.

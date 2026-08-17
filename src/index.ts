@@ -53,8 +53,6 @@ export type {
   VerifyTokenConfig,
 } from "./KrdpassAuthReactNative.types";
 
-// KrdpassMessages stays unexported: the codes are the contract, not the strings, and exporting
-// them would make every canonical message a semver commitment.
 export {
   KrdpassAuthError,
   KrdpassScopes,
@@ -64,8 +62,6 @@ export {
   isAuthResultSuccess,
   isAuthResultTimeout,
   isAuthResultProviderNotInstalled,
-  // Exported because casting backend token JSON to the interface instead compiles but leaves
-  // receivedAt undefined and isExpired missing, so isExpired() throws at runtime.
   makeTokenResult,
 } from "./KrdpassAuthReactNative.types";
 
@@ -128,8 +124,6 @@ const assertHttpsRedirectUri = (redirectUri: string): string => {
   return normalized;
 };
 
-// Validated at initialize(): the value usually arrives from an env var through a cast, and an
-// unrecognized one would otherwise fail natively long after the mistake was made.
 const assertEnvironment = (
   environment: string | undefined,
 ): KrdpassEnvironment | undefined => {
@@ -171,7 +165,6 @@ async function callNative<T>(
   call: () => Promise<unknown>,
 ): Promise<T> {
   try {
-    // The bridge is typed UnsafeObject; the shape is asserted once here, T named at the call site.
     return (await call()) as T;
   } catch (e) {
     if (e instanceof KrdpassAuthError) throw e;
@@ -248,8 +241,8 @@ export async function getUserInfo(
   return mapUserInfo(raw);
 }
 
-// A blank claim means "not provided" and reads as undefined, never as "", matching Android's
-// `takeIf { it.isNotBlank() }`. The value that survives is the untrimmed original.
+// A blank claim means "not provided" and reads as undefined, never as "". The value that
+// survives is the untrimmed original.
 const claimString = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim().length > 0 ? value : undefined;
 
@@ -258,16 +251,15 @@ const claimStringArray = (value: unknown): string[] =>
     ? value
     : [];
 
-/** Map the raw snake_case UserInfo claims into the typed shape shared with the other SDKs. */
 function mapUserInfo(raw: Record<string, unknown>): KrdpassUserInfo {
   // sub is the only claim read without the blank filter: an empty sub fails the parse, while a
-  // whitespace-only one is kept, matching the other three SDKs.
+  // whitespace-only one is kept.
   const sub = typeof raw.sub === "string" ? raw.sub : "";
   if (!sub) {
     throw new Error("Invalid user info response: missing or empty sub field");
   }
   // Each part is trimmed before joining so a padded or whitespace-only claim never leaves a
-  // stray space in the joined name, matching the other SDKs.
+  // stray space in the joined name.
   const nameParts = [
     raw.citizen_first,
     raw.citizen_second,
@@ -362,19 +354,15 @@ export async function verifyToken(
 
 /** Generate a PKCE code verifier and challenge pair for server-mediated flows. */
 export async function generatePkcePair(): Promise<PkcePair> {
-  // No resolveConfig(): a PKCE pair needs no client config, so this stays callable before
-  // initialize().
   const { codeVerifier, codeChallenge } = await callNative<{
     codeVerifier: string;
     codeChallenge: string;
   }>("pkce_generation_failed", undefined, () =>
     KrdpassAuthReactNativeModule.generatePkcePair(),
   );
-  // KRDPASS always uses S256; surface it so callers don't hardcode the method.
   return { codeVerifier, codeChallenge, method: "S256" };
 }
 
-// The one home of the error-resolution policy shared by callNative and authenticate.
 // rawDescription always keeps the original native/server text; errorDescription prefers the
 // canonical message. installUrl is derived locally and never crosses the bridge.
 function errorParts(
@@ -438,17 +426,17 @@ export async function authenticate(
         errorDescription: e instanceof Error ? e.message : String(e),
       };
     }
-    const requestUri = config.requestUri?.trim();
+    const requestUri =
+      typeof config.requestUri === "string" ? config.requestUri.trim() : undefined;
     if (!requestUri) {
       return {
         error: "platform_error",
         errorDescription: "requestUri is required",
       };
     }
-    // Android rejects a blank state with isBlank() while iOS uses isEmpty, so "   " failed
-    // closed on only one platform; decided here for both. Never trimmed on the way through:
-    // the core must see the backend's PAR state byte-identical.
-    if (config.state === undefined || config.state.trim().length === 0) {
+    // Trimmed to decide, never on the way through: the cores must see the backend's PAR
+    // state byte-identical.
+    if (typeof config.state !== "string" || config.state.trim().length === 0) {
       return {
         error: "invalid_request",
         errorDescription: KrdpassMessages.STATE_REQUIRED,
@@ -508,8 +496,6 @@ export async function authenticate(
 export async function cancelPendingAuthentication(options?: {
   timeout?: boolean;
 }): Promise<boolean> {
-  // No resolveConfig(): cancelling needs no client config, so this stays callable before
-  // initialize().
   return callNative<boolean>("platform_error", _storedConfig?.environment, () =>
     KrdpassAuthReactNativeModule.cancelAuthentication({
       timeout: options?.timeout ?? false,
@@ -528,7 +514,7 @@ export function generateState(): string {
   try {
     require("react-native-get-random-values");
   } catch {
-    // Not installed. The check below says what to do about it.
+    void 0;
   }
   const cryptoObj = (globalThis as { crypto?: RandomSource }).crypto;
   if (!cryptoObj?.getRandomValues) {
@@ -549,7 +535,6 @@ declare function atob(data: string): string;
 declare function btoa(data: string): string;
 declare function require(moduleName: string): unknown;
 
-/** The one thing generateState needs from `globalThis.crypto`. */
 type RandomSource = { getRandomValues(array: Uint8Array): Uint8Array };
 
 /**
@@ -574,9 +559,17 @@ export function decodeTokenUnverified(token: string): TokenClaims {
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
         .join(""),
     );
-    return JSON.parse(json) as TokenClaims;
-  } catch (e) {
-    throw new Error(`Not a valid JWT payload: ${String(e)}`);
+    const claims = JSON.parse(json) as TokenClaims;
+    // A one-element `aud` array collapses to its string, the shape every other entry point
+    // and every other KRDPASS SDK reports for a single audience.
+    if (Array.isArray(claims.aud) && claims.aud.length === 1) {
+      claims.aud = claims.aud[0];
+    }
+    return claims;
+  } catch {
+    // Constant message: a JSON.parse SyntaxError embeds a snippet of the payload it choked on,
+    // which would put decoded citizen claims into logs and crash telemetry.
+    throw new Error("Not a valid JWT payload");
   }
 }
 

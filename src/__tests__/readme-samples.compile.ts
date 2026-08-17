@@ -36,11 +36,11 @@ export async function quickstartClientOnly(): Promise<void> {
     if (e instanceof KrdpassAuthError) {
       switch (e.code) {
         case "cancelled":
-          break; // usually no UI needed
+          break;
         case "timeout":
-          break; // offer retry
+          break;
         case "busy":
-          break; // ignore or queue
+          break;
         case "state_mismatch":
           break; // fail closed and restart
         case "provider_not_installed":
@@ -67,11 +67,11 @@ export async function quickstartServerMediated(): Promise<void> {
     void result.code;
     void result.state;
   } else if (isAuthResultCancelled(result)) {
-    // usually no UI needed
+    void result;
   } else if (isAuthResultTimeout(result)) {
-    // offer retry
+    void result;
   } else if (isAuthResultBusy(result)) {
-    // ignore or queue
+    void result;
   } else if (isAuthResultProviderNotInstalled(result)) {
     void result.installUrl;
   } else {

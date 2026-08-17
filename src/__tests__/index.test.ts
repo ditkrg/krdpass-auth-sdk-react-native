@@ -99,12 +99,29 @@ describe("decodeTokenUnverified", () => {
     const valid = encodeSegment({ sub: "abc" });
     const mangled = valid.split("").join("!");
     expect(() => decodeTokenUnverified(`header.${mangled}.sig`)).toThrow();
-    // Sanity check that the un-mangled fixture really is decodable.
     expect(decodeTokenUnverified(`header.${valid}.sig`).sub).toBe("abc");
   });
 
   it("throws on an unparseable payload", () => {
     expect(() => decodeTokenUnverified("header.!!!notbase64!!!.sig")).toThrow();
+  });
+
+  it("keeps the decoded payload out of the thrown message", () => {
+    // The exact message, not a substring: a SyntaxError carrying the snippet still contains
+    // "Not a valid JWT payload", so a substring assertion passes against the leaking version.
+    const truncatedClaims = '{"iss":"x","citizen_surname":"Kaban","upn":"199012345678","aud":!}';
+    const token = `header.${Buffer.from(truncatedClaims, "utf8")
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "")}.sig`;
+
+    try {
+      decodeTokenUnverified(token);
+      throw new Error("expected decodeTokenUnverified to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("Not a valid JWT payload");
+    }
   });
 });
 
@@ -418,6 +435,17 @@ describe("authenticate()", () => {
   it("rejects an omitted state WITHOUT calling native", async () => {
     // The type requires state, but an untyped caller can still omit it.
     const config = { requestUri: "urn:abc" } as AuthenticateConfig;
+    const result = await authenticate(config);
+    expect(result).toEqual({
+      error: "invalid_request",
+      errorDescription: KrdpassMessages.STATE_REQUIRED,
+    });
+    expect(nativeAuth()).not.toHaveBeenCalled();
+  });
+
+  it("rejects a null state WITHOUT throwing", async () => {
+    // What a backend's PAR JSON yields when it omits the field.
+    const config = { requestUri: "urn:abc", state: null } as unknown as AuthenticateConfig;
     const result = await authenticate(config);
     expect(result).toEqual({
       error: "invalid_request",

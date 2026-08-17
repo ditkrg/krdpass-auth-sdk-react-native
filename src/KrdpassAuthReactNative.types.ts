@@ -1,4 +1,3 @@
-/** Which KRDPASS deployment the SDK talks to. */
 export type KrdpassEnvironment = "production" | "development";
 
 /**
@@ -78,7 +77,6 @@ export function messageForErrorCode(code: string): string | undefined {
  */
 export interface SignInConfig {
   scopes?: string | string[];
-  /** Optional authentication timeout in seconds. */
   timeout?: number;
 }
 
@@ -218,7 +216,6 @@ export type AuthErrorCode =
   | "provider_not_installed"
   | "no_code"
   | "network_error"
-  // The core fails closed when it cannot generate a secure PKCE pair.
   | "pkce_generation_failed"
   // Per-call permanent failures (4xx, malformed response), not retryable. Same strings as the
   // Android/iOS/Flutter SDKs.
@@ -231,7 +228,6 @@ export type AuthErrorCode =
   | "platform_error";
 
 export interface AuthResultErrorBase {
-  /** The wire error code. */
   error: AuthErrorCode | (string & {});
   /**
    * User-facing description. For a code with a canonical cross-SDK message this
@@ -361,7 +357,6 @@ export interface AuthenticateConfig {
    * flow closed without it, since CSRF validation cannot be skipped.
    */
   state: string;
-  /** Optional authentication timeout in seconds; native SDK defaults apply when omitted. */
   timeout?: number;
 }
 

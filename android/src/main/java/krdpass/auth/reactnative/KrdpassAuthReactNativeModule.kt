@@ -28,9 +28,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * React Native bridge for KRDPASS authentication. The core SDK owns the security policy; this
- * module owns only React Native activity and promise plumbing. Every promise rejection code is
- * a lowercase wire code shared with the Android, iOS and Flutter SDKs: do not invent a new one,
- * and never an UPPERCASE one.
+ * module owns only React Native activity and promise plumbing.
  */
 @ReactModule(name = KrdpassAuthReactNativeModule.NAME)
 @DoNotStrip
@@ -57,12 +55,8 @@ class KrdpassAuthReactNativeModule(
   }
 
   override fun invalidate() {
-    // Settle before cancelling: teardown otherwise drops the in-flight promise and JS waits
-    // on it forever.
-    flight.getAndSet(null)?.let {
-      KrdpassAuth.cancelPendingAuthentication()
-      settleTerminal(it, timeout = false)
-    }
+    // Settle before tearing down, or the in-flight promise is dropped and JS waits forever.
+    flight.getAndSet(null)?.let { settleTerminal(it, timeout = false) }
     scopeJob.cancel()
     reactContext.removeActivityEventListener(this)
     super.invalidate()
@@ -147,25 +141,35 @@ class KrdpassAuthReactNativeModule(
     }
 
     scope.launch {
-      withContext(Dispatchers.Main) {
-        val activity = reactContext.currentActivity
-        if (activity == null) {
-          if (detach(f)) resolveAuthError(promise, "platform_error", "Current activity is null")
-          return@withContext
-        }
-        when (val launch = KrdpassAuth.startAuthentication(activity, f.config, args.requestUri, args.state ?: "")) {
-          is KrdpassAuth.AuthLaunch.Failure -> {
-            if (detach(f)) promise.resolve(authResultToMap(launch.error))
+      try {
+        withContext(Dispatchers.Main) {
+          val activity = reactContext.currentActivity
+          if (activity == null) {
+            if (detach(f)) resolveAuthError(promise, "platform_error", "Current activity is null")
+            return@withContext
           }
-          is KrdpassAuth.AuthLaunch.Ready -> {
-            if (flight.get() !== f) return@withContext
-            try {
-              launchForAuthentication(activity, launch)
-              scheduleAuthTimeout(f, args.timeoutSeconds)
-            } catch (e: Exception) {
-              if (detach(f)) resolveAuthError(promise, "launch_failed", e.message ?: "Failed to open KRDPASS")
+          when (val launch = KrdpassAuth.startAuthentication(activity, f.config, args.requestUri, args.state ?: "")) {
+            is KrdpassAuth.AuthLaunch.Failure -> {
+              if (detach(f)) promise.resolve(authResultToMap(launch.error))
+            }
+            is KrdpassAuth.AuthLaunch.Ready -> {
+              if (flight.get() !== f) return@withContext
+              try {
+                launchForAuthentication(activity, launch)
+                scheduleAuthTimeout(f, args.timeoutSeconds)
+              } catch (e: Exception) {
+                if (detach(f)) resolveAuthError(promise, "launch_failed", e.message ?: "Failed to open KRDPASS")
+              }
             }
           }
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        // startAuthentication reaches PackageManager, whose binder faults are unchecked. Without
+        // this the scope has no handler, the process dies, and the flight stays claimed forever.
+        withContext(Dispatchers.Main) {
+          if (detach(f)) resolveAuthError(promise, sdkErrorCode(e) ?: "platform_error", e.message ?: "")
         }
       }
     }
@@ -179,9 +183,6 @@ class KrdpassAuthReactNativeModule(
       promise.resolve(false)
       return
     }
-    // Tell the core too: it owns the pending window, and without this a flow cancelled here
-    // still blocks the next one.
-    KrdpassAuth.cancelPendingAuthentication(timeout)
     settleTerminal(f, timeout)
     promise.resolve(true)
   }
@@ -239,12 +240,20 @@ class KrdpassAuthReactNativeModule(
     f.timeoutJob?.cancel()
     val pending = f.signInPending
     if (pending != null) {
+      val settled = AtomicBoolean(false)
       scope.launch {
         try {
           val tokens = KrdpassAuth.finishSignIn(resultCode, data, f.config, pending)
           withContext(Dispatchers.Main) { f.promise.resolve(tokensToMap(tokens)) }
         } catch (e: Exception) {
           withContext(Dispatchers.Main) { f.promise.reject(krdpassErrorCode(e), e.message, e) }
+        }
+        settled.set(true)
+      }.invokeOnCompletion { cause ->
+        // A teardown mid-exchange cancels this coroutine before either settle runs, and the
+        // catch's own withContext is skipped once cancelled.
+        if (cause is CancellationException && settled.compareAndSet(false, true)) {
+          f.promise.reject("cancelled", AuthResult.Cancelled.message ?: "")
         }
       }
     } else {
@@ -258,7 +267,6 @@ class KrdpassAuthReactNativeModule(
   @DoNotStrip
   override fun handleURL(url: String) = Unit
 
-  /** Launches a core-prepared activity-result transaction without replacing its options. */
   private fun launchForAuthentication(activity: Activity, launch: KrdpassAuth.AuthLaunch.Ready) {
     activity.startActivityForResult(
       launch.intent,
@@ -338,10 +346,6 @@ class KrdpassAuthReactNativeModule(
     return parsed
   }
 
-  /**
-   * The non-blank string for [key], or null after rejecting [promise]: blank and absent
-   * classify identically on every method.
-   */
   private fun requireArg(config: Map<String, Any?>, key: String, promise: Promise): String? {
     val value = config[key] as? String
     if (value.isNullOrBlank()) {
@@ -364,7 +368,6 @@ class KrdpassAuthReactNativeModule(
     val timeoutSeconds: Double,
   )
 
-  /** Parsed [signIn] options, or null after rejecting [promise] with the reason. */
   private fun parseSignInArgs(config: Map<String, Any?>, promise: Promise): SignInArgs? {
     val clientId = requireArg(config, "clientId", promise) ?: return null
     val redirectUri = requireArg(config, "redirectUri", promise) ?: return null

@@ -5,8 +5,6 @@ import KrdpassAuth
 /**
  * Authentication implementation behind the Objective-C++ React Native facade, kept separate so
  * the facade satisfies Codegen's generated protocol without exposing Swift runtime details.
- * Every promise rejection code is a lowercase wire code shared with the Android, iOS and
- * Flutter SDKs: do not invent a new one, and never an UPPERCASE one.
  */
 @MainActor
 @objc(KrdpassAuthReactNativeModule)
@@ -158,7 +156,7 @@ public final class KrdpassAuthReactNativeModule: NSObject {
     guard let environment = parseEnvironmentOrReject(config, reject) else { return }
     let clockSkew = (config["clockSkew"] as? NSNumber)?.doubleValue ?? 60
     perform(clientId: clientId, environment: environment, fallback: "verification_failed", resolve: resolve, reject: reject) { auth in
-      try await auth.verifyToken(idToken: idToken, clockSkew: clockSkew)
+      try await auth.verifyToken(idToken: idToken, clockSkew: clockSkew).mapValues(\.jsonObject)
     }
   }
 
@@ -287,7 +285,7 @@ public final class KrdpassAuthReactNativeModule: NSObject {
   }
 
   /// Accepts exactly the two names the JS layer's own validation accepts (any case, trimmed);
-  /// absent or null means production. Kept in step with BridgeMapping.environment on Android.
+  /// absent or null means production.
   /// NSNull is checked as well as nil: an omitted JS key arrives as nil, but an explicit
   /// `environment: null` arrives as NSNull.
   private func parseEnvironment(_ value: Any?) throws -> KrdpassEnvironment {
@@ -352,8 +350,6 @@ public final class KrdpassAuthReactNativeModule: NSObject {
     return fields
   }
 
-  /// The non-blank string for `key`, or nil: blank and absent classify identically on every
-  /// method, matching Android's requireArg.
   private static func requiredArg(_ config: NSDictionary, _ key: String) -> String? {
     guard let value = config[key] as? String,
       !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

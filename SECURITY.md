@@ -4,7 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.5.x   | :white_check_mark: |
+| 1.5.x   | yes                |
 
 ## Reporting a Vulnerability
 
@@ -24,8 +24,6 @@ Email **security@pass.krd** instead, and include:
 - We will provide a more detailed response within 7 days indicating our next steps.
 - We will keep you informed about our progress throughout the process.
 - We will credit you (with your permission) when the vulnerability is disclosed.
-
-## Notes on two things worth knowing
 
 **Nothing here pins the TLS certificate of `account.id.krd`.** This package opens no
 sockets of its own. Every network call it can cause, the token exchange and the JWKS
