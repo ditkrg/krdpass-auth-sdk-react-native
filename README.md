@@ -5,7 +5,7 @@ cores, which hand off to the installed KRDPASS identity app. It is not a browser
 flow.
 
 Full integration guide, onboarding, error codes and security requirements:
-**[KRDPASS documentation](https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-sign-in-with-krdpass.html)**
+**[KRDPASS documentation](https://docs.digital.gov.krd/software-development/04-interoperability/11-krdpass-overview.html)**
 
 ## What this package is, and is not
 
@@ -25,7 +25,7 @@ Auditing this repository is not the same as auditing the KRDPASS sign-in flow.
 - Expo SDK 57 or newer, for Expo apps (development build or EAS Build)
 - Android `minSdk` 24, iOS 15.5
 - A `clientId`, approved scopes, and an HTTPS `redirectUri`. See
-  [Getting started](https://docs.digital.gov.krd/software-development/04-interoperability/12-krdpass-getting-started.html).
+  [Getting started](https://docs.digital.gov.krd/software-development/04-interoperability/13-krdpass-onboarding.html).
 
 **Register every signing certificate you ship from.** KRDPASS validates the signing
 certificate of the app that launches it, not just the `clientId`. A build signed with an
@@ -189,7 +189,7 @@ its timeout.
 ## Error handling
 
 Every error code, what emits it, and how to handle it:
-[Testing and go-live](https://docs.digital.gov.krd/software-development/04-interoperability/14-krdpass-testing-and-go-live.html).
+[Testing and go-live](https://docs.digital.gov.krd/software-development/04-interoperability/15-krdpass-testing.html).
 
 `isAuthResultError` is the catch-all guard for an `authenticate` result that is not a
 success. `invalid_redirect` is Android-only: on iOS the same mismatch ends the flow as
@@ -200,7 +200,7 @@ success. `invalid_redirect` is Android-only: on iOS the same mismatch ends the f
 `getUserInfo`, `refreshTokens`, `revokeToken`, `verifyToken` and `decodeTokenUnverified` are
 exported functions. `KrdpassScopes` carries the canonical scope strings so you do not
 hardcode them. Scopes, claims and token handling rules:
-[Reference](https://docs.digital.gov.krd/software-development/04-interoperability/15-krdpass-reference.html).
+[Reference](https://docs.digital.gov.krd/software-development/04-interoperability/16-krdpass-reference.html).
 
 The SDK never persists tokens. Storage requirements:
 [Token storage](https://github.com/ditkrg/krdpass-auth-samples/blob/main/docs/TOKEN-STORAGE.md).
